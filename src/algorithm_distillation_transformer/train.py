@@ -79,7 +79,7 @@ def train(
     train_batches_per_epoch = len(train_dataloader)
     pbar = tqdm(range(train_epochs))
     for epoch in pbar:
-        for batch, (s, a, r, d, rtg, ti, m) in enumerate(train_dataloader):
+        for batch, (s, a, r, d, reward, ti, m) in enumerate(train_dataloader):
             total_batches = epoch * train_batches_per_epoch + batch
 
             model.train()
@@ -91,22 +91,13 @@ def train(
 
             optimizer.zero_grad()
 
-            if isinstance(model, DecisionTransformer):
+            if isinstance(model, DecisionTransformer):#TODO make AD transformer
                 action = a[:, :-1].unsqueeze(-1) if a.shape[1] > 1 else None
                 _, action_preds, _ = model.forward(
                     states=s,
                     # remove last action
                     actions=action,
-                    rtgs=rtg[:, :-1],  # remove last rtg
-                    timesteps=ti.unsqueeze(-1),
-                )
-            elif isinstance(model, CloneTransformer):
-                _, action_preds = model.forward(
-                    states=s,
-                    # remove last action
-                    actions=a[:, :-1].unsqueeze(-1)
-                    if a.shape[1] > 1
-                    else None,
+                    rtgs=reward[:, :-1],  # remove last reward  #TODO figure out whether we should change this for the AD
                     timesteps=ti.unsqueeze(-1),
                 )
 
@@ -210,7 +201,7 @@ def test(
 
             a[a == -10] = env.action_space.n
 
-            if isinstance(model, DecisionTransformer):
+            if isinstance(model, DecisionTransformer):#TODO change to AD transformer and do something on else maybe?
                 _, action_preds, _ = model.forward(
                     states=s,
                     actions=a[:, :-1].unsqueeze(-1)
@@ -219,15 +210,7 @@ def test(
                     rtgs=rtg[:, :-1],
                     timesteps=ti.unsqueeze(-1),
                 )
-            elif isinstance(model, CloneTransformer):
-                _, action_preds = model.forward(
-                    states=s,
-                    # remove last action
-                    actions=a[:, :-1].unsqueeze(-1)
-                    if a.shape[1] > 1
-                    else None,
-                    timesteps=ti.unsqueeze(-1),
-                )
+          
 
             action_preds = rearrange(action_preds, "b t a -> (b t) a")
             a_exp = rearrange(a, "b t -> (b t)").to(t.int64)
@@ -309,12 +292,13 @@ def evaluate_dt_agent(
     # each env will get its own seed by incrementing on the given seed
     obs, _ = env.reset(seed=0)
     obs = t.tensor(obs["image"]).unsqueeze(1)
-    rtg = rearrange(t.ones(num_envs, dtype=t.int) * initial_rtg, "e -> e 1 1")
+    #rewards = rearrange(t.ones(num_envs, dtype=t.int) * initial_rtg, "e -> e 1 1") #TODO theres no initial reward in AD, figure out what to do about that
+   
     a = rearrange(t.zeros(num_envs, dtype=t.int), "e -> e 1 1")
     timesteps = rearrange(t.zeros(num_envs, dtype=t.int), "e -> e 1 1")
 
     obs = obs.to(device)
-    rtg = rtg.to(device)
+    rewards = rewards.to(device)
     a = a.to(device)
     timesteps = timesteps.to(device)
 
@@ -322,17 +306,18 @@ def evaluate_dt_agent(
         timesteps = timesteps.to(t.float32)
 
     # get first action
+
     if isinstance(model, DecisionTransformer):
         state_preds, action_preds, reward_preds = model.forward(
-            states=obs, actions=None, rtgs=rtg, timesteps=timesteps
+            states=obs, actions=None, rtgs=rewards, timesteps=timesteps
         )
-    elif isinstance(model, CloneTransformer):
+    elif isinstance(model, CloneTransformer):#TODO Does clone transformer make sense in an ad setting? in that case change
         state_preds, action_preds = model.forward(
             states=obs, actions=None, timesteps=timesteps
         )
     else:  # it's probably a legacy model in which case the interface is:
         state_preds, action_preds, reward_preds = model.forward(
-            states=obs, actions=a, rtgs=rtg, timesteps=timesteps
+            states=obs, actions=a, rtgs=rewards, timesteps=timesteps
         )
 
     new_action = t.argmax(action_preds, dim=-1).squeeze(-1)
@@ -345,15 +330,8 @@ def evaluate_dt_agent(
             [obs, t.tensor(new_obs["image"]).unsqueeze(1).to(device)], dim=1
         )
 
-        # add new reward to init reward
-        rtg = t.cat(
-            [
-                rtg,
-                rtg[:, -1:, :]
-                - rearrange(t.tensor(new_reward).to(device), "e -> e 1 1"),
-            ],
-            dim=1,
-        )
+        # add new reward
+        rewards.append(new_reward)
 
         # add new timesteps
         timesteps = t.cat(
@@ -381,22 +359,23 @@ def evaluate_dt_agent(
             if timesteps.shape[1] > max_len
             else timesteps
         )
-        rtg = rtg[:, -max_len:] if rtg.shape[1] > max_len else rtg
+        rewards = rewards[:, -max_len:] if rewards.shape[1] > max_len else rewards
 
-        if isinstance(model, DecisionTransformer):
+        if isinstance(model, DecisionTransformer):#TODO change this to Algorithm distilation model 
             state_preds, action_preds, reward_preds = model.forward(
-                states=obs, actions=actions, rtgs=rtg, timesteps=timesteps
+                states=obs, actions=actions, rtgs=rewards, timesteps=timesteps
             )
-        elif isinstance(model, CloneTransformer):
+        elif isinstance(model, CloneTransformer): 
             state_preds, action_preds = model.forward(
                 states=obs, actions=actions, timesteps=timesteps
             )
         else:  # it's probably a legacy model in which case the interface is:
+            #TODO maybe just remove this
             steps = model.transformer_config.n_ctx // 3
             state_preds, action_preds, reward_preds = model.forward(
                 states=obs[:, -steps:],
                 actions=a[:, -steps:],
-                rtgs=rtg[:, -steps:],
+                rtgs=rewards[:, -steps:],
                 timesteps=timesteps[:, -steps:],
             )
 
@@ -443,7 +422,7 @@ def evaluate_dt_agent(
                                 path_to_video,
                                 fps=4,
                                 format="mp4",
-                                caption=f"{env_id}, after {n_terminated + n_truncated} episodes, reward {new_reward}, rtg {initial_rtg}",
+                                caption=f"{env_id}, after {n_terminated + n_truncated} episodes, reward {new_reward}",
                             )
                         },
                         step=batch_number,
@@ -453,7 +432,6 @@ def evaluate_dt_agent(
     collected_trajectories = n_terminated + n_truncated
 
     statistics = {
-        "initial_rtg": initial_rtg,
         "prop_completed": n_terminated / collected_trajectories,
         "prop_truncated": n_truncated / collected_trajectories,
         "mean_reward": reward_total / collected_trajectories,
@@ -472,7 +450,7 @@ def evaluate_dt_agent(
             if key == "traj_lengths":
                 wandb.log(
                     {
-                        f"eval/{str(initial_rtg)}/traj_lengths": wandb.Histogram(
+                        f"eval/traj_lengths": wandb.Histogram(
                             value
                         )
                     },
@@ -481,14 +459,14 @@ def evaluate_dt_agent(
             elif key == "rewards":
                 wandb.log(
                     {
-                        f"eval/{str(initial_rtg)}/rewards": wandb.Histogram(
+                        f"eval/rewards": wandb.Histogram(
                             value
                         )
                     },
                     step=batch_number,
                 )
             wandb.log(
-                {f"eval/{str(initial_rtg)}/" + key: value}, step=batch_number
+                {f"eval/" + key: value}, step=batch_number
             )
 
     return statistics
