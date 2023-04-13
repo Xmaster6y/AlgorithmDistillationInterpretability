@@ -14,8 +14,7 @@ from tqdm import tqdm
 import wandb
 from src.config import EnvironmentConfig
 from src.models.trajectory_transformer import (
-    CloneTransformer,
-    DecisionTransformer,
+    AlgorithmDistillationTransformer,
     TrajectoryTransformer,
 )
 
@@ -38,7 +37,6 @@ def train(
     test_frequency=10,
     eval_frequency=10,
     eval_episodes=10,
-    initial_rtg=[0.0, 1.0],
     eval_max_time_steps=100,
     eval_num_envs=8,
 ):
@@ -91,13 +89,13 @@ def train(
 
             optimizer.zero_grad()
 
-            if isinstance(model, DecisionTransformer):#TODO make AD transformer
-                action = a[:, :-1].unsqueeze(-1) if a.shape[1] > 1 else None
+            if isinstance(model, AlgorithmDistillationTransformer):
+                action = a[:, :-1].unsqueeze(-1) if a.shape[1] > 1 else None #TODO understand and maybe change this
                 _, action_preds, _ = model.forward(
                     states=s,
                     # remove last action
                     actions=action,
-                    rtgs=reward[:, :-1],  # remove last reward  #TODO figure out whether we should change this for the AD
+                    rewards=reward[:, :-1],  # remove last reward  
                     timesteps=ti.unsqueeze(-1),
                 )
 
@@ -158,7 +156,6 @@ def train(
         )
 
         if epoch % eval_frequency == 0:
-            for rtg in initial_rtg:
                 evaluate_dt_agent(
                     env_id=env.spec.id,
                     model=model,
@@ -166,7 +163,6 @@ def train(
                     trajectories=eval_episodes,
                     track=track,
                     batch_number=total_batches,
-                    initial_rtg=float(rtg),
                     device=device,
                     num_envs=eval_num_envs,
                 )
@@ -195,19 +191,19 @@ def test(
     test_batches_per_epoch = len(dataloader)
 
     for epoch in pbar:
-        for batch, (s, a, r, d, rtg, ti, m) in enumerate(dataloader):
+        for batch, (s, a, r, d, reward, ti, m) in enumerate(dataloader):
             if model.transformer_config.time_embedding_type == "linear":
                 ti = ti.to(t.float32)
 
             a[a == -10] = env.action_space.n
 
-            if isinstance(model, DecisionTransformer):#TODO change to AD transformer and do something on else maybe?
+            if isinstance(model, AlgorithmDistillationTransformer):#TODO change to AD transformer and do something on else maybe?
                 _, action_preds, _ = model.forward(
                     states=s,
                     actions=a[:, :-1].unsqueeze(-1)
                     if a.shape[1] > 1
                     else None,
-                    rtgs=rtg[:, :-1],
+                    rewards=reward[:, :-1],
                     timesteps=ti.unsqueeze(-1),
                 )
           
@@ -245,7 +241,6 @@ def evaluate_dt_agent(
     trajectories=300,
     track=False,
     batch_number=0,
-    initial_rtg=0.98,
     use_tqdm=True,
     device="cpu",
     num_envs=8,
@@ -260,10 +255,10 @@ def evaluate_dt_agent(
             n_ctx=model.n_ctx,
             time_embedding_type=model.time_embedding_type,
         )
-
-    max_len = get_max_len_from_model_type(
-        model_type="decision_transformer"
-        if isinstance(model, DecisionTransformer)
+ 
+    max_len = get_max_len_from_model_type(#TODO change this
+        model_type="algorithm_distillation"
+        if isinstance(model, AlgorithmDistillationTransformer)
         else "clone_transformer",
         n_ctx=model.transformer_config.n_ctx,
     )
@@ -307,19 +302,11 @@ def evaluate_dt_agent(
 
     # get first action
 
-    if isinstance(model, DecisionTransformer):
+    if isinstance(model, AlgorithmDistillationTransformer):
         state_preds, action_preds, reward_preds = model.forward(
-            states=obs, actions=None, rtgs=rewards, timesteps=timesteps
+            states=obs, actions=None, rewards=rewards, timesteps=timesteps
         )
-    elif isinstance(model, CloneTransformer):#TODO Does clone transformer make sense in an ad setting? in that case change
-        state_preds, action_preds = model.forward(
-            states=obs, actions=None, timesteps=timesteps
-        )
-    else:  # it's probably a legacy model in which case the interface is:
-        state_preds, action_preds, reward_preds = model.forward(
-            states=obs, actions=a, rtgs=rewards, timesteps=timesteps
-        )
-
+        
     new_action = t.argmax(action_preds, dim=-1).squeeze(-1)
     new_obs, new_reward, terminated, truncated, info = env.step(new_action)
 
@@ -361,22 +348,9 @@ def evaluate_dt_agent(
         )
         rewards = rewards[:, -max_len:] if rewards.shape[1] > max_len else rewards
 
-        if isinstance(model, DecisionTransformer):#TODO change this to Algorithm distilation model 
+        if isinstance(model, AlgorithmDistillationTransformer):#TODO change this to Algorithm distilation model 
             state_preds, action_preds, reward_preds = model.forward(
-                states=obs, actions=actions, rtgs=rewards, timesteps=timesteps
-            )
-        elif isinstance(model, CloneTransformer): 
-            state_preds, action_preds = model.forward(
-                states=obs, actions=actions, timesteps=timesteps
-            )
-        else:  # it's probably a legacy model in which case the interface is:
-            #TODO maybe just remove this
-            steps = model.transformer_config.n_ctx // 3
-            state_preds, action_preds, reward_preds = model.forward(
-                states=obs[:, -steps:],
-                actions=a[:, -steps:],
-                rtgs=rewards[:, -steps:],
-                timesteps=timesteps[:, -steps:],
+                states=obs, actions=actions, rewards=rewards, timesteps=timesteps
             )
 
         new_action = t.argmax(action_preds, dim=-1).squeeze(-1)
@@ -418,7 +392,7 @@ def evaluate_dt_agent(
                     path_to_video = os.path.join(video_path, new_video)
                     wandb.log(
                         {
-                            f"media/video/{initial_rtg}/": wandb.Video(
+                            f"media/video/": wandb.Video(
                                 path_to_video,
                                 fps=4,
                                 format="mp4",
@@ -445,8 +419,6 @@ def evaluate_dt_agent(
     if track:
         # log statistics at batch number but prefix with eval
         for key, value in statistics.items():
-            if key == "initial_rtg":
-                continue
             if key == "traj_lengths":
                 wandb.log(
                     {
