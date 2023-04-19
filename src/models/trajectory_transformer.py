@@ -112,6 +112,8 @@ class TrajectoryTransformer(nn.Module):
 
     def get_action_embedding(self, actions):
         block_size = actions.shape[1]
+        if block_size == 0:
+            return None  # no actions to embed
         actions = rearrange(
             actions, "batch block action -> (batch block) action"
         )
@@ -251,7 +253,7 @@ class DecisionTransformer(TrajectoryTransformer):
             transformer_config=transformer_config,
             **kwargs,
         )
-
+        self.model_type = "decision_transformer"
         self.reward_embedding = nn.Sequential(
             nn.Linear(1, self.transformer_config.d_model, bias=False)
         )
@@ -465,7 +467,7 @@ class CloneTransformer(TrajectoryTransformer):
         environment_config: EnvironmentConfig,
     ):
         super().__init__(transformer_config, environment_config)
-
+        self.model_type = "clone_transformer"
         # n_ctx must be odd (previous state, action, next state)
         assert (transformer_config.n_ctx - 1) % 2 == 0
         self.transformer = (
@@ -569,7 +571,7 @@ class CloneTransformer(TrajectoryTransformer):
                 f"Sequence length is too long for transformer, got {seq_length} and {self.transformer_config.n_ctx}"
             )
 
-        no_actions = actions is None
+        no_actions = (actions is None) or (actions.shape[1] == 0)
 
         if no_actions is False:
             if actions.shape[1] < seq_length - 1:
@@ -600,7 +602,7 @@ class CloneTransformer(TrajectoryTransformer):
         # embed states and recast back to (batch, block_size, n_embd)
         token_embeddings = self.to_tokens(states, actions, timesteps)
 
-        if actions is not None:
+        if no_actions is False:
             if actions.shape[1] == states.shape[1] - 1:
                 x = self.transformer(token_embeddings[:, :-1])
                 # concat last action embedding to the end of the transformer output x[:,-2].unsqueeze(1)

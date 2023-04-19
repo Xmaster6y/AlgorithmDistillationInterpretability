@@ -1,7 +1,11 @@
 import streamlit as st
 import torch as t
 
-from .environment import get_action_from_user, get_env_and_dt
+from src.decision_transformer.utils import (
+    get_max_len_from_model_type,
+    initialize_padding_inputs,
+)
+from .environment import get_env_and_dt, get_action_from_user
 
 action_string_to_id = {
     "left": 0,
@@ -20,15 +24,28 @@ def initialize_playground(model_path, initial_rtg):
         env, dt = get_env_and_dt(model_path)
         obs, _ = env.reset()
 
-        # initilize the session state trajectory details
-        st.session_state.obs = t.tensor(obs["image"]).unsqueeze(0).unsqueeze(0)
-        st.session_state.rtg = (
-            t.tensor([initial_rtg]).unsqueeze(0).unsqueeze(0)
+        max_len = get_max_len_from_model_type(
+            dt.model_type, dt.transformer_config.n_ctx
         )
-        st.session_state.reward = t.tensor([0]).unsqueeze(0).unsqueeze(0)
-        st.session_state.a = t.tensor([0]).unsqueeze(0).unsqueeze(0)
-        st.session_state.timesteps = t.tensor([0]).unsqueeze(0).unsqueeze(0)
+
+        action_pad_token = dt.environment_config.action_space.n
+
+        obs, actions, reward, rtg, timesteps, mask = initialize_padding_inputs(
+            max_len, obs, initial_rtg, action_pad_token
+        )
+
+        rendered_obs = t.from_numpy(env.render()).unsqueeze(0)
+
+        st.session_state.max_len = max_len
+        st.session_state.mask = mask
+        st.session_state.obs = obs
+        st.session_state.rendered_obs = rendered_obs
+        st.session_state.reward = reward
+        st.session_state.rtg = rtg
+        st.session_state.a = actions
+        st.session_state.timesteps = timesteps
         st.session_state.dt = dt
+
     else:
         env = st.session_state.env
         dt = st.session_state.dt

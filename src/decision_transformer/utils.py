@@ -1,52 +1,16 @@
 import argparse
 import json
-import re
-from dataclasses import dataclass, field
-from typing import List
 
 import torch as t
-from minigrid.wrappers import OneHotPartialObsWrapper, RGBImgPartialObsWrapper
 
 from src.config import (
     EnvironmentConfig,
-    OfflineTrainConfig,
     TransformerModelConfig,
 )
-from src.models.trajectory_transformer import DecisionTransformer
-
-from .model import DecisionTransformer as DecisionTransformerLegacy
-from .offline_dataset import TrajectoryDataset
-
-
-@dataclass
-class DTArgs:
-    exp_name: str = "Dev"
-    d_model: int = 128
-    trajectory_path: str = "trajectories/MiniGrid-Dynamic-Obstacles-8x8-v0c8c5dccc-b418-492e-bdf8-2c21256cd9f3.pkl"
-    n_heads: int = 4
-    d_mlp: int = 256
-    n_layers: int = 2
-    n_ctx: int = 3
-    layer_norm: bool = False
-    batch_size: int = 64
-    train_epochs: int = 10
-    test_epochs: int = 3
-    learning_rate: float = 0.0001
-    linear_time_embedding: bool = False
-    pct_traj: float = 1
-    weight_decay: float = 0.001
-    seed: int = 1
-    track: bool = True
-    wandb_project_name: str = "DecisionTransformerInterpretability"
-    wandb_entity: str = None
-    test_frequency: int = 100
-    test_batches: int = 10
-    eval_frequency: int = 100
-    eval_episodes: int = 10
-    initial_rtg: List[float] = field(default_factory=lambda: [0.0, 1.0])
-    prob_go_from_end: float = 0.1
-    eval_max_time_steps: int = 1000
-    cuda: bool = True
+from src.models.trajectory_transformer import (
+    DecisionTransformer,
+    CloneTransformer,
+)
 
 
 def parse_args():
@@ -97,7 +61,7 @@ def parse_args():
         action="append",
         help="<Required> Set flag",
         required=False,
-        default=[0, 1],
+        default=[],
     )
     parser.add_argument("--prob_go_from_end", type=float, default=0.1)
     parser.add_argument("--eval_max_time_steps", type=int, default=1000)
@@ -115,84 +79,19 @@ def parse_args():
     return args
 
 
-def load_decision_transformer(model_path, env):
-    if model_stored_in_legacy_format(model_path):
-        state_dict = t.load(model_path)
-        if "state_encoder.weight" in state_dict.keys():
-            return load_legacy_decision_transformer(state_dict, env)
+# TODO Support loading Clone Transformers
+def load_decision_transformer(model_path, env=None) -> DecisionTransformer:
+    """ """
 
-        # get number of layers from the state dict
-        num_layers = (
-            max(
-                [
-                    int(re.findall(r"\d+", k)[0])
-                    for k in state_dict.keys()
-                    if "transformer.blocks" in k
-                ]
-            )
-            + 1
-        )
-        d_model = state_dict["reward_embedding.0.weight"].shape[0]
-        d_mlp = state_dict["transformer.blocks.0.mlp.W_out"].shape[0]
-        n_heads = state_dict["transformer.blocks.0.attn.W_O"].shape[0]
-        max_timestep = state_dict["time_embedding.weight"].shape[0] - 1
-        n_ctx = state_dict["transformer.pos_embed.W_pos"].shape[0]
-        layer_norm = "transformer.blocks.0.ln1.w" in state_dict
+    model_info = t.load(model_path)
+    state_dict = model_info["model_state_dict"]
+    transformer_config = TransformerModelConfig(
+        **json.loads(model_info["model_config"])
+    )
 
-        if "state_encoder.weight" in state_dict:
-            # otherwise it would be a sequential and wouldn't have this
-            state_embedding_type = "grid"
-
-        if state_dict["time_embedding.weight"].shape[1] == 1:
-            time_embedding_type = "linear"
-        else:
-            time_embedding_type = "embedding"
-
-        environment_config = EnvironmentConfig(
-            env_id=env.unwrapped.spec.id,
-            one_hot_obs=isinstance(
-                env.observation_space, OneHotPartialObsWrapper
-            ),
-            img_obs=isinstance(env.observation_space, RGBImgPartialObsWrapper),
-            view_size=env.unwrapped.observation_space["image"].shape[0],
-            fully_observed=False,
-            capture_video=False,
-            render_mode="rgb_array",
-        )
-
-        transformer_config = TransformerModelConfig(
-            d_model=d_model,
-            n_heads=n_heads,
-            d_mlp=d_mlp,
-            n_layers=num_layers,
-            n_ctx=n_ctx,
-            layer_norm=layer_norm,
-            time_embedding_type=time_embedding_type,
-            state_embedding_type=state_embedding_type,
-        )
-    else:
-        (
-            state_dict,
-            trajectory_data_set,
-            transformer_config,
-            _,
-        ) = load_model_data(model_path)
-
-        if "state_encoder.weight" in state_dict.keys():
-            return load_legacy_decision_transformer(state_dict, env)
-
-        # now we can create the model
-        # model = DecisionTransformer(
-        #     EnvironmentConfig(env.__spec__),
-        # )
-        environment_config = EnvironmentConfig(
-            env_id=trajectory_data_set.metadata["args"]["env_id"],
-            one_hot_obs=trajectory_data_set.observation_type == "one_hot",
-            view_size=trajectory_data_set.metadata["args"]["view_size"],
-            fully_observed=False,
-            capture_video=False,
-            render_mode="rgb_array",
-        )
+    environment_config = EnvironmentConfig(
+        **json.loads(model_info["environment_config"])
+    )
 
     model = DecisionTransformer(
         environment_config=environment_config,
@@ -201,83 +100,6 @@ def load_decision_transformer(model_path, env):
 
     model.load_state_dict(state_dict)
     return model
-
-
-# To maintain backwards compatibility with the old models.
-
-
-def load_legacy_decision_transformer(state_dict, env):
-    # get number of layers from the state dict
-    num_layers = (
-        max(
-            [
-                int(re.findall(r"\d+", k)[0])
-                for k in state_dict.keys()
-                if "transformer.blocks" in k
-            ]
-        )
-        + 1
-    )
-    d_model = state_dict["reward_embedding.0.weight"].shape[0]
-    d_mlp = state_dict["transformer.blocks.0.mlp.W_out"].shape[0]
-    n_heads = state_dict["transformer.blocks.0.attn.W_O"].shape[0]
-    max_timestep = state_dict["time_embedding.weight"].shape[0] - 1
-    n_ctx = state_dict["transformer.pos_embed.W_pos"].shape[0]
-    layer_norm = "transformer.blocks.0.ln1.w" in state_dict
-
-    if "state_encoder.weight" in state_dict:
-        # otherwise it would be a sequential and wouldn't have this
-        state_embedding_type = "grid"
-
-    if state_dict["time_embedding.weight"].shape[1] == 1:
-        time_embedding_type = "linear"
-    else:
-        time_embedding_type = "learned"
-
-    # now we can create the model
-    model = DecisionTransformerLegacy(
-        env=env,
-        n_layers=num_layers,
-        d_model=d_model,
-        d_mlp=d_mlp,
-        state_embedding_type=state_embedding_type,
-        time_embedding_type=time_embedding_type,
-        n_heads=n_heads,
-        max_timestep=max_timestep,
-        n_ctx=n_ctx,
-        layer_norm=layer_norm,
-    )
-
-    model.load_state_dict(state_dict)
-    return model
-
-
-def model_stored_in_legacy_format(model_path):
-    model_info = t.load(model_path)
-    return "model_state_dict" not in model_info
-
-
-def load_model_data(model_path):
-    model_info = t.load(model_path)
-    state_dict = model_info["model_state_dict"]
-    transformer_config = TransformerModelConfig(
-        **json.loads(model_info["transformer_config"])
-    )
-    transformer_config.device = t.device(transformer_config.device)
-    offline_config = OfflineTrainConfig(
-        **json.loads(model_info["offline_config"])
-    )
-    offline_config.device = t.device(offline_config.device)
-
-    trajectory_data_set = TrajectoryDataset(
-        trajectory_path=offline_config.trajectory_path,
-        max_len=transformer_config.n_ctx // 3,
-        pct_traj=offline_config.pct_traj,
-        prob_go_from_end=offline_config.prob_go_from_end,
-        device=transformer_config.device,
-    )
-
-    return state_dict, trajectory_data_set, transformer_config, offline_config
 
 
 def get_max_len_from_model_type(model_type: str, n_ctx: int):
@@ -296,3 +118,83 @@ def get_max_len_from_model_type(model_type: str, n_ctx: int):
         return 1 + n_ctx // 3
     else:
         return 1 + n_ctx // 2
+
+
+def initialize_padding_inputs(
+    max_len: int,
+    initial_obs: dict,
+    initial_rtg: float,
+    action_pad_token: int,
+    batch_size=1,
+    device="cpu",
+):
+    """
+    Initializes input tensors for a decision transformer based on the given maximum length of the sequence, initial observation, initial return-to-go (rtg) value,
+    and padding token for actions.
+
+    Padding token for rtg is assumed to be the initial RTG at all values. This is important.
+    Padding token for initial obs is 0. But it could be -1 and we might parameterize in the future.
+    Mask is initialized to 0.0 and then set to 1.0 for all values that are not padding (one value currently)
+
+    Args:
+    - max_len (int): maximum length of the sequence
+    - initial_obs (Dict[str, Union[torch.Tensor, np.ndarray]]): initial observation dictionary, containing an "image" tensor with shape (batch_size, channels, height, width)
+    - initial_rtg (float): initial return-to-go value used to initialize the reward-to-go tensor
+    - action_pad_token (int): padding token used to initialize the actions tensor
+    - batch_size (int): batch size of the sequences (default: 1)
+
+    Returns:
+    - obs (torch.Tensor): tensor of shape (batch_size, max_len, channels, height, width), initialized with zeros and the initial observation in the last dimension
+    - actions (torch.Tensor): tensor of shape (batch_size, max_len - 1, 1), initialized with the padding token
+    - reward (torch.Tensor): tensor of shape (batch_size, max_len, 1), initialized with zeros
+    - rtg (torch.Tensor): tensor of shape (1, max_len, 1), initialized with the initial rtg value and broadcasted to the batch size dimension
+    - timesteps (torch.Tensor): tensor of shape (batch_size, max_len, 1), initialized with zeros
+    - mask (torch.Tensor): tensor of shape (batch_size, max_len), initialized with zeros and ones at the last position to mark the end of the sequence
+    """
+
+    device = t.device(device)
+
+    mask = t.concat(
+        (
+            t.zeros((batch_size, max_len - 1), dtype=t.bool),
+            t.ones((batch_size, 1), dtype=t.bool),
+        ),
+        dim=1,
+    ).to(device)
+
+    obs_dim = initial_obs["image"].shape[-3:]
+    if len(initial_obs["image"].shape) == 3:
+        assert (
+            batch_size == 1
+        ), "only one initial obs provided but batch size > 1"
+        obs_image = t.tensor(initial_obs["image"])[None, None, :, :, :].to(
+            device
+        )
+    elif len(initial_obs["image"].shape) == 4:
+        obs_image = t.tensor(initial_obs["image"])[:, None, :, :, :].to(device)
+    else:
+        raise ValueError(
+            "initial obs image has invalid shape: {}".format(
+                initial_obs["image"].shape
+            )
+        )
+
+    obs = t.concat(
+        (
+            t.zeros((batch_size, max_len - 1, *obs_dim)).to(device),
+            obs_image,
+        ),
+        dim=1,
+    ).to(float)
+
+    reward = t.zeros((batch_size, max_len, 1), dtype=t.float).to(device)
+    rtg = initial_rtg * t.ones((batch_size, max_len, 1), dtype=t.float).to(
+        device
+    )
+    timesteps = t.zeros((batch_size, max_len, 1), dtype=t.long).to(device)
+
+    actions = (
+        t.ones(batch_size, max_len - 1, 1, dtype=t.long) * action_pad_token
+    ).to(device)
+
+    return obs, actions, reward, rtg, timesteps, mask
