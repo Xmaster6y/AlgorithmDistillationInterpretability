@@ -27,7 +27,7 @@ def show_qk_circuit(dt):
         )
 
         W_E_rtg = dt.reward_embedding[0].weight
-        W_E_state = dt.state_encoder.weight
+        W_E_state = dt.state_embedding.weight
         W_Q = dt.transformer.blocks[0].attn.W_Q
         W_K = dt.transformer.blocks[0].attn.W_K
 
@@ -41,11 +41,12 @@ def show_qk_circuit(dt):
         # W_QK_full = W_E_rtg.T @ W_QK @ W_E_state
         W_QK_full = W_E_state.T @ W_QK @ W_E_rtg
 
-        channels = dt.env.observation_space["image"].shape[-1]
-        height = dt.env.observation_space["image"].shape[0]
-        width = dt.env.observation_space["image"].shape[1]
+        n_heads = dt.transformer_config.n_heads
+        height, width, channels = dt.environment_config.observation_space[
+            "image"
+        ].shape
         W_QK_full_reshaped = W_QK_full.reshape(
-            dt.n_heads, 1, channels, height, width
+            n_heads, 1, channels, height, width
         )
 
         selection_columns = st.columns(2)
@@ -53,7 +54,7 @@ def show_qk_circuit(dt):
         with selection_columns[0]:
             heads = st.multiselect(
                 "Select Heads",
-                options=list(range(dt.n_heads)),
+                options=list(range(n_heads)),
                 key="head qk",
                 default=[0],
             )
@@ -105,21 +106,22 @@ def show_ov_circuit(dt):
             """
         )
 
-        W_U = dt.predict_actions.weight
+        W_U = dt.action_predictor.weight
         W_O = dt.transformer.blocks[0].attn.W_O
         W_V = dt.transformer.blocks[0].attn.W_V
-        W_E = dt.state_encoder.weight
+        W_E = dt.state_embedding.weight
         W_OV = W_V @ W_O
 
         # st.plotly_chart(px.imshow(W_OV.detach().numpy(), facet_col=0), use_container_width=True)
         OV_circuit_full = W_E.T @ W_OV @ W_U.T
 
-        channels = dt.env.observation_space["image"].shape[-1]
-        height = dt.env.observation_space["image"].shape[0]
-        width = dt.env.observation_space["image"].shape[1]
+        height, width, channels = dt.environment_config.observation_space[
+            "image"
+        ].shape
         n_actions = W_U.shape[0]
+        n_heads = dt.transformer_config.n_heads
         OV_circuit_full_reshaped = OV_circuit_full.reshape(
-            dt.n_heads, channels, height, width, n_actions
+            n_heads, channels, height, width, n_actions
         )
 
         if channels == 3:
@@ -134,7 +136,7 @@ def show_ov_circuit(dt):
         with selection_columns[0]:
             heads = st.multiselect(
                 "Select Heads",
-                options=list(range(dt.n_heads)),
+                options=list(range(n_heads)),
                 key="head ov",
                 default=[0],
             )
@@ -186,10 +188,17 @@ def show_time_embeddings(dt, logit_dir):
         if dt.time_embedding_type == "linear":
             time_steps = t.arange(100).unsqueeze(0).unsqueeze(-1).to(t.float32)
             time_embeddings = dt.get_time_embeddings(time_steps).squeeze(0)
-            dot_prod = time_embeddings @ logit_dir
         else:
-            dot_prod = dt.time_embedding.weight @ logit_dir
+            time_embeddings = dt.time_embedding.weight
 
+        max_timestep = st.slider(
+            "Max timestep",
+            min_value=1,
+            max_value=time_embeddings.shape[0] - 1,
+            value=time_embeddings.shape[0] - 1,
+        )
+        time_embeddings = time_embeddings[: max_timestep + 1]
+        dot_prod = time_embeddings @ logit_dir
         dot_prod = dot_prod.detach()
 
         show_initial = st.checkbox("Show initial time embedding", value=True)
@@ -211,6 +220,24 @@ def show_time_embeddings(dt, logit_dir):
                 annotation_text="Current timestep",
             )
         st.plotly_chart(fig, use_container_width=True)
+
+        def calc_cosine_similarity_matrix(matrix: t.Tensor) -> t.Tensor:
+            # Check if the input matrix is square
+            # assert matrix.shape[0] == matrix.shape[1], "The input matrix must be square."
+
+            # Normalize the column vectors
+            norms = t.norm(
+                matrix, dim=0
+            )  # Compute the norms of the column vectors
+            normalized_matrix = (
+                matrix / norms
+            )  # Normalize the column vectors by dividing each element by the corresponding norm
+
+            # Compute the cosine similarity matrix using matrix multiplication
+            return t.matmul(normalized_matrix.t(), normalized_matrix)
+
+        similarity_matrix = calc_cosine_similarity_matrix(time_embeddings.T)
+        st.plotly_chart(px.imshow(similarity_matrix.detach().numpy()))
 
 
 def show_rtg_embeddings(dt, logit_dir):

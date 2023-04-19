@@ -1,12 +1,21 @@
 import math
 
+import json
 import gymnasium as gym
 import minigrid
 import streamlit as st
 import torch as t
 
 from src.config import EnvironmentConfig
-from src.decision_transformer.utils import load_decision_transformer
+from src.models.trajectory_transformer import (
+    DecisionTransformer,
+    CloneTransformer,
+)
+
+from src.decision_transformer.utils import (
+    load_decision_transformer,
+    get_max_len_from_model_type,
+)
 from src.environments.environments import make_env
 from src.utils import pad_tensor
 
@@ -15,85 +24,64 @@ from src.utils import pad_tensor
 def get_env_and_dt(model_path):
     # we need to one if the env was one hot encoded. Some tech debt here.
     state_dict = t.load(model_path)
-    one_hot_encoded = not (
-        state_dict["state_encoder.weight"].shape[-1] % 20
-    )  # hack for now
-    # list all mini grid envs
-    minigrid_envs = [i for i in gym.envs.registry.keys() if "MiniGrid" in i]
-    # find the env id in the path
-    env_ids = [i for i in minigrid_envs if i in model_path]
-    if len(env_ids) == 0:
-        raise ValueError(
-            f"Could not find the env id in the model path: {model_path}"
-        )
-    elif len(env_ids) > 1:
-        raise ValueError(
-            f"Found more than one env id in the model path: {model_path}"
-        )
-    else:
-        env_id = env_ids[0]
-    # env_id = 'MiniGrid-Dynamic-Obstacles-8x8-v0'
-    if one_hot_encoded:
-        view_size = int(
-            math.sqrt(state_dict["state_encoder.weight"].shape[-1] // 20)
-        )
-    else:
-        view_size = int(
-            math.sqrt(state_dict["state_encoder.weight"].shape[-1] // 3)
-        )
 
-    env_config = EnvironmentConfig(
-        env_id=env_id,
-        capture_video=False,
-        fully_observed=False,
-        one_hot_obs=one_hot_encoded,
-        view_size=view_size,
-        max_steps=30,
-    )
+    env_config = state_dict["environment_config"]
+    env_config = EnvironmentConfig(**json.loads(env_config))
 
     env = make_env(env_config, seed=4200, idx=0, run_name="dev")
     env = env()
 
     dt = load_decision_transformer(model_path, env)
+    if not hasattr(dt, "n_ctx"):
+        dt.n_ctx = dt.transformer_config.n_ctx
+    if not hasattr(dt, "time_embedding_type"):
+        dt.time_embedding_type = dt.transformer_config.time_embedding_type
     return env, dt
 
 
 def get_action_preds(dt):
-    max_len = dt.n_ctx // 3
+    # so we can ignore older models when making updates
 
-    if "timestep_adjustment" in st.session_state:
-        timesteps = (
-            st.session_state.timesteps[:, -max_len:]
-            + st.session_state.timestep_adjustment
+    max_len = get_max_len_from_model_type(
+        dt.model_type,
+        dt.transformer_config.n_ctx,
+    )
+
+    timesteps = st.session_state.timesteps[:, -max_len:]
+    timesteps = (
+        timesteps + st.session_state.timestep_adjustment
+        if "timestep_adjustment" in st.session_state
+        else timesteps
+    )
+
+    obs = st.session_state.obs
+    actions = st.session_state.a
+    rtg = st.session_state.rtg
+
+    # truncations:
+    obs = obs[:, -max_len:] if obs.shape[1] > max_len else obs
+    if actions is not None:
+        actions = (
+            actions[:, -(obs.shape[1] - 1) :]
+            if (actions.shape[1] > 1 and max_len > 1)
+            else None
         )
-
-    obs = st.session_state.obs[:, -max_len:]
-    actions = st.session_state.a[:, -max_len:]
-    rtg = st.session_state.rtg[:, -max_len:]
-
-    if obs.shape[1] < max_len:
-        obs = pad_tensor(obs, max_len)
-        actions = pad_tensor(actions, max_len, pad_token=dt.env.action_space.n)
-        rtg = pad_tensor(rtg, max_len, pad_token=0)
-        timesteps = pad_tensor(timesteps, max_len, pad_token=0)
+    timesteps = (
+        timesteps[:, -max_len:] if timesteps.shape[1] > max_len else timesteps
+    )
+    rtg = rtg[:, -max_len:] if rtg.shape[1] > max_len else rtg
 
     if dt.time_embedding_type == "linear":
         timesteps = timesteps.to(dtype=t.float32)
     else:
         timesteps = timesteps.to(dtype=t.long)
 
-    tokens = dt.to_tokens(
-        obs,
-        actions.to(dtype=t.long),
-        rtg,
-        timesteps.to(dtype=t.long),
-    )
-
+    tokens = dt.to_tokens(obs, actions, rtg, timesteps)
     x, cache = dt.transformer.run_with_cache(tokens, remove_batch_dim=False)
-    state_preds, action_preds, reward_preds = dt.get_logits(
-        x, batch_size=1, seq_length=max_len
-    )
 
+    state_preds, action_preds, reward_preds = dt.get_logits(
+        x, batch_size=1, seq_length=obs.shape[1], no_actions=actions is None
+    )
     return action_preds, x, cache, tokens
 
 
@@ -111,7 +99,19 @@ def respond_to_action(env, action, initial_rtg):
         ],
         dim=1,
     )
-    # print(t.tensor(action).unsqueeze(0).unsqueeze(0).shape)
+
+    # store the rendered image
+    st.session_state.rendered_obs = t.cat(
+        [
+            st.session_state.rendered_obs,
+            t.from_numpy(env.render()).unsqueeze(0),
+        ],
+        dim=0,
+    )
+
+    if st.session_state.a is None:
+        st.session_state.a = t.tensor([action]).unsqueeze(0).unsqueeze(0)
+
     st.session_state.a = t.cat(
         [st.session_state.a, t.tensor([action]).unsqueeze(0).unsqueeze(0)],
         dim=1,

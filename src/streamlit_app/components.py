@@ -1,8 +1,7 @@
-import pandas as pd
-import plotly.express as px
+import torch
 import streamlit as st
 import streamlit.components.v1 as components
-import torch as t
+import uuid
 
 from .environment import get_action_preds
 from .utils import read_index_html
@@ -50,7 +49,12 @@ def hyperpar_side_bar():
                 step=0.01,
             )
         if "rtg" in st.session_state:
-            st.session_state.rtg = initial_rtg - st.session_state.reward
+            # get cumulative reward
+            cumulative_reward = st.session_state.reward.cumsum(dim=1)
+            rtg = initial_rtg * torch.ones(
+                (1, cumulative_reward.shape[1], 1), dtype=torch.float
+            )  # no reward yet
+            st.session_state.rtg = rtg - cumulative_reward
 
         timestep_adjustment = st.slider(
             "Timestep Adjustment",
@@ -67,7 +71,10 @@ def hyperpar_side_bar():
 def render_trajectory_details():
     with st.expander("Trajectory Details"):
         # write out actions, rtgs, rewards, and timesteps
-        st.write(f"actions: {st.session_state.a[0].squeeze(-1).tolist()}")
+        st.write(f"max timeteps: {st.session_state.max_len}")
+        st.write(f"trajectory length: {len(st.session_state.obs[0])}")
+        if st.session_state.a is not None:
+            st.write(f"actions: {st.session_state.a[0].squeeze(-1).tolist()}")
         st.write(f"rtgs: {st.session_state.rtg[0].squeeze(-1).tolist()}")
         st.write(f"rewards: {st.session_state.reward[0].squeeze(-1).tolist()}")
         st.write(
@@ -76,9 +83,8 @@ def render_trajectory_details():
 
 
 def reset_button():
-    if st.button("reset"):
-        del st.session_state.env
-        del st.session_state.dt
+    if st.button("reset", key=uuid.uuid4()):
+        reset_env_dt()
         st.experimental_rerun()
 
 
@@ -88,3 +94,10 @@ def record_keypresses():
         height=0,
         width=0,
     )
+
+
+def reset_env_dt():
+    if "env" in st.session_state:
+        del st.session_state.env
+    if "dt" in st.session_state:
+        del st.session_state.dt
