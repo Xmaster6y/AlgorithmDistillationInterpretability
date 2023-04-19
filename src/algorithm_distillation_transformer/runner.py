@@ -17,7 +17,7 @@ from src.config import (
 from src.environments.registration import register_envs
 from src.models.trajectory_transformer import (
     CloneTransformer,
-    DecisionTransformer,
+    AlgorithmDistillationTransformer,
 )
 
 # from .model import DecisionTransformer
@@ -30,7 +30,7 @@ from .train import train
 from .utils import get_max_len_from_model_type
 
 
-def run_decision_transformer(
+def run_algorithm_distillation(
     run_config: RunConfig,
     transformer_config: TransformerModelConfig,
     offline_config: OfflineTrainConfig,
@@ -124,7 +124,7 @@ def run_decision_transformer(
         )
 
     if offline_config.model_type == "decision_transformer":
-        model = DecisionTransformer(
+        model = AlgorithmDistillationTransformer(
             environment_config=environment_config,
             transformer_config=transformer_config,
         )
@@ -152,7 +152,6 @@ def run_decision_transformer(
         test_frequency=offline_config.test_frequency,
         eval_frequency=offline_config.eval_frequency,
         eval_episodes=offline_config.eval_episodes,
-        initial_rtg=offline_config.initial_rtg,
         eval_max_time_steps=offline_config.eval_max_time_steps,
         eval_num_envs=offline_config.eval_num_envs,
     )
