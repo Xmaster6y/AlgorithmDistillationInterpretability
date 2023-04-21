@@ -468,7 +468,7 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
         self.reward_predictor = nn.Linear(self.transformer_config.d_model, 1)
 
         # n_ctx include full timesteps except for the last where it doesn't know the action
-        assert (transformer_config.n_ctx - 2) % 3 == 0#TODO figure
+        assert (transformer_config.n_ctx - 1) % 3 == 0#TODO figure
 
         nn.init.normal_(
             self.reward_embedding[0].weight,
@@ -501,17 +501,23 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
         batches = state_embeddings.shape[0]
         timesteps = time_embeddings.shape[1]
 
-        reward_embeddings = reward_embeddings + time_embeddings
+        
         state_embeddings = state_embeddings + time_embeddings
-
         if action_embeddings is not None:
             if action_embeddings.shape[1] < timesteps:
                 assert (
                     action_embeddings.shape[1] == timesteps - 1
                 ), "Action embeddings must be one timestep less than state embeddings"
+                assert (
+                    reward_embeddings.shape[1] == timesteps - 1
+                ), "Reward embeddings must be one timestep less than state embeddings"
                 action_embeddings = (
                     action_embeddings
                     + time_embeddings[:, : action_embeddings.shape[1]]
+                )
+                reward_embeddings = (
+                    reward_embeddings
+                    + time_embeddings[:, : reward_embeddings.shape[1]]
                 )
                 trajectory_length = timesteps * 3 - 2#No action or reward
             else:
@@ -526,7 +532,7 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
             dtype=torch.float32,
             device=state_embeddings.device,
         )  # batches, blocksize, n_embd
-
+        print(token_embeddings.shape)
         if action_embeddings is not None:
             
             token_embeddings[:, 0::3, :] = state_embeddings
@@ -534,6 +540,8 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
             token_embeddings[:, 2::3, :] = reward_embeddings
         else:
             token_embeddings[:, 0, :] = state_embeddings[:, 0, :]
+
+        
 
         return token_embeddings
 
@@ -551,7 +559,7 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
         time_embeddings = self.get_time_embedding(
             timesteps
         )  # batch_size, block_size, n_embd
-
+       
         # use state_embeddings, actions, rewards to go and
         token_embeddings = self.get_token_embeddings(
             state_embeddings=state_embeddings,

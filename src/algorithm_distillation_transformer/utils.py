@@ -292,7 +292,7 @@ def get_max_len_from_model_type(model_type: str, n_ctx: int):
     every 2 tokens for clone transformers.
     """
     assert model_type in ["decision_transformer", "clone_transformer"]
-    if model_type == "decision_transformer":
+    if model_type == "algorithm_distillation":
         return 1 + n_ctx // 3
     else:
         return 1 + n_ctx // 2

@@ -95,7 +95,7 @@ def train(
                     states=s,
                     # remove last action
                     actions=action,
-                    rewards=reward[:, :-1],  # remove last reward  
+                    rewards=reward[:, :-2],  #TODO figure this out, remove last reward?  
                     timesteps=ti.unsqueeze(-1),
                 )
 
@@ -196,14 +196,14 @@ def test(
                 ti = ti.to(t.float32)
 
             a[a == -10] = env.action_space.n
-
+            
             if isinstance(model, AlgorithmDistillationTransformer):#TODO change to AD transformer and do something on else maybe?
                 _, action_preds, _ = model.forward(
                     states=s,
                     actions=a[:, :-1].unsqueeze(-1)
                     if a.shape[1] > 1
                     else None,
-                    rewards=reward[:, :-1],
+                    rewards=reward[:, :-2],
                     timesteps=ti.unsqueeze(-1),
                 )
           
