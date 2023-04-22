@@ -532,7 +532,6 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
             dtype=torch.float32,
             device=state_embeddings.device,
         )  # batches, blocksize, n_embd
-        print(token_embeddings.shape)
         if action_embeddings is not None:
             
             token_embeddings[:, 0::3, :] = state_embeddings
