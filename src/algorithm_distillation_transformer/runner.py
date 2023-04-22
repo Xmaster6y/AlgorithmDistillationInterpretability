@@ -122,7 +122,7 @@ def run_decision_transformer(
             {"dataset/num_trajectories": trajectory_data_set.num_trajectories}
         )
 
-    if offline_config.model_type == "decision_transformer":
+    if offline_config.model_type == "algorithm_distillation":
         model = AlgorithmDistillationTransformer(
             environment_config=environment_config,
             transformer_config=transformer_config,

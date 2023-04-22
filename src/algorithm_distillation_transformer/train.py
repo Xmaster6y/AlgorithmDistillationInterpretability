@@ -77,7 +77,7 @@ def train(
     train_batches_per_epoch = len(train_dataloader)
     pbar = tqdm(range(train_epochs))
     for epoch in pbar:
-        for batch, (s, a, r, d, reward, ti, m) in enumerate(train_dataloader):
+        for batch, (s, a, r, d, rtg, ti, m) in enumerate(train_dataloader):
             total_batches = epoch * train_batches_per_epoch + batch
 
             model.train()
@@ -95,7 +95,7 @@ def train(
                     states=s,
                     # remove last action
                     actions=action,
-                    rewards=reward[:, :-2],  #TODO figure this out, remove last reward?  
+                    rewards=r[:, :-1],  #TODO figure this out, remove last reward?  
                     timesteps=ti.unsqueeze(-1),
                 )
 

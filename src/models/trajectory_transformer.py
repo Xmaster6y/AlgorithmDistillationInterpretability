@@ -559,7 +559,6 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
         time_embeddings = self.get_time_embedding(
             timesteps
         )  # batch_size, block_size, n_embd
-       
         # use state_embeddings, actions, rewards to go and
         token_embeddings = self.get_token_embeddings(
             state_embeddings=state_embeddings,

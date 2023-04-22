@@ -51,8 +51,8 @@ class DTArgs:
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        prog="Decision Transformer",
-        description="Train a decision transformer on a trajectory dataset.",
+        prog="Algorithm distilation",
+        description="Train a algorithm distillation transformer on training histories",
         epilog="The last enemy that shall be defeated is death.",
     )
     parser.add_argument("--exp_name", type=str, default="Dev")
@@ -103,7 +103,7 @@ def parse_args():
     parser.add_argument("--eval_max_time_steps", type=int, default=1000)
     parser.add_argument("--cuda", action=argparse.BooleanOptionalAction)
     parser.add_argument(
-        "--model_type", type=str, default="decision_transformer"
+        "--model_type", type=str, default="algorithm_distillation"
     )
     parser.add_argument(
         "--convert_to_one_hot",
@@ -291,7 +291,7 @@ def get_max_len_from_model_type(model_type: str, n_ctx: int):
     timestep for every 3 tokens for decision transformers and
     every 2 tokens for clone transformers.
     """
-    assert model_type in ["decision_transformer", "clone_transformer"]
+    assert model_type in ["algorithm_distillation", "clone_transformer"]
     if model_type == "algorithm_distillation":
         return 1 + n_ctx // 3
     else:
