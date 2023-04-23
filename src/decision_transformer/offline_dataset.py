@@ -85,24 +85,12 @@ class TrajectoryDataset(Dataset):
         infos = np.array(infos, dtype=np.ndarray)
 
         # check whether observations are flat or an image
-        if observations.shape[-1] == 3:
+        if observations.shape[-1] == 3:  # if the last dimension of observations has size 3 (= 3 channels) -> image
             self.observation_type = "index"
-        elif observations.shape[-1] == 20:
+            t_observations = rearrange(torch.tensor(observations), "t b h w c -> (b t) h w c")
+        else:  # otherwise, assume one-hot
             self.observation_type = "one_hot"
-        else:
-            raise ValueError(
-                "Observations are not flat or images, check the shape of the observations: ",
-                observations.shape,
-            )
-
-        if self.observation_type != "flat":
-            t_observations = rearrange(
-                torch.tensor(observations), "t b h w c -> (b t) h w c"
-            )
-        else:
-            t_observations = rearrange(
-                torch.tensor(observations), "t b f -> (b t) f"
-            )
+            t_observations = rearrange(torch.tensor(observations), "t b f -> (b t) f")
 
         t_actions = rearrange(torch.tensor(actions), "t b -> (b t)")
         t_rewards = rearrange(torch.tensor(rewards), "t b -> (b t)")
@@ -423,3 +411,7 @@ def one_hot_encode_observation(img: torch.Tensor) -> torch.Tensor:
                 ] = 1
 
     return torch.from_numpy(out).float()
+
+
+if __name__ == '__main__':
+    tr = TrajectoryDataset('/home/lukas/Documents/AI/MI_AD_Project/Repos/AlgorithmDistillationInterpretability/tr_2env.npz')
