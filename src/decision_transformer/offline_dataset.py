@@ -52,7 +52,6 @@ class TrajectoryDataset(Dataset):
         trajectory_path,
         max_len=1,
         prob_go_from_end=0,
-        pct_traj=1.0,
         rtg_scale=1,
         normalize_state=False,
         preprocess_observations: Callable = None,
@@ -61,7 +60,6 @@ class TrajectoryDataset(Dataset):
         self.trajectory_path = trajectory_path
         self.max_len = max_len
         self.prob_go_from_end = prob_go_from_end
-        self.pct_traj = pct_traj
         self.device = device
         self.normalize_state = normalize_state
         self.rtg_scale = rtg_scale
@@ -126,7 +124,8 @@ class TrajectoryDataset(Dataset):
         self.max_ep_len = max([len(i) for i in self.states])
         self.metadata = data["metadata"]
 
-        self.indices = self.get_indices_of_top_p_trajectories(self.pct_traj)
+        # we want the trajectory indices to be in order of their generation -> indices = [0, 1, ..., num_trajectories]
+        self.indices = np.arange(0, self.num_trajectories)
         self.sampling_probabilities = self.get_sampling_probabilities()
 
         if self.normalize_state:
@@ -138,26 +137,6 @@ class TrajectoryDataset(Dataset):
         # TODO Make this way less hacky
         if self.preprocess_observations == one_hot_encode_observation:
             self.observation_type = "one_hot"
-
-    def get_indices_of_top_p_trajectories(self, pct_traj):
-        num_timesteps = max(int(pct_traj * self.num_timesteps), 1)
-        sorted_inds = np.argsort(self.returns)
-
-        num_trajectories = 1
-        timesteps = self.traj_lens[sorted_inds[-1]]
-        ind = self.num_trajectories - 1
-
-        while (
-            ind >= 0
-            and timesteps + self.traj_lens[sorted_inds[ind]] < num_timesteps
-        ):
-            timesteps += self.traj_lens[sorted_inds[ind]]
-            ind -= 1
-            num_trajectories += 1
-
-        sorted_inds = sorted_inds[-num_trajectories:]
-
-        return sorted_inds
 
     def get_sampling_probabilities(self):
         p_sample = self.traj_lens[self.indices] / sum(
