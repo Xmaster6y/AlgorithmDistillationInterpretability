@@ -32,6 +32,12 @@ class TrajectoryReader:
         elif self.path.endswith(".gz"):
             with gzip.open(self.path, "rb") as f:
                 data = pickle.load(f)
+        # if path ends in .npz, read with np.load
+        elif self.path.endswith(".npz"):
+            with open(self.path, "rb") as f:
+                np_file = np.load(f)
+                data = {key: np_file[key] for key in np_file}
+                data = {'data': data, 'metadata': {}}
         else:
             raise ValueError(
                 f"Path {self.path} is not a valid trajectory file"
