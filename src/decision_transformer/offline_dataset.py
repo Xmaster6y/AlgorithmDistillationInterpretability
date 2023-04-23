@@ -75,8 +75,7 @@ class TrajectoryDataset(Dataset):
         observations = data["data"].get("observations")
         actions = data["data"].get("actions")
         rewards = data["data"].get("rewards")
-        dones = data["data"].get("dones")
-        truncated = data["data"].get("truncated")
+        dones = data["data"].get("dones")  # dones = done or truncated
         infos = data["data"].get("infos")
 
         observations = np.array(observations)
@@ -108,15 +107,12 @@ class TrajectoryDataset(Dataset):
         t_actions = rearrange(torch.tensor(actions), "t b -> (b t)")
         t_rewards = rearrange(torch.tensor(rewards), "t b -> (b t)")
         t_dones = rearrange(torch.tensor(dones), "t b -> (b t)")
-        t_truncated = rearrange(torch.tensor(truncated), "t b -> (b t)")
 
-        t_done_or_truncated = torch.logical_or(t_dones, t_truncated)
-        done_indices = torch.where(t_done_or_truncated)[0]
+        done_indices = torch.where(t_dones)[0]
 
         self.actions = torch.tensor_split(t_actions, done_indices + 1)
         self.rewards = torch.tensor_split(t_rewards, done_indices + 1)
         self.dones = torch.tensor_split(t_dones, done_indices + 1)
-        self.truncated = torch.tensor_split(t_truncated, done_indices + 1)
         self.states = torch.tensor_split(t_observations, done_indices + 1)
         self.returns = [r.sum() for r in self.rewards]
         self.timesteps = [torch.arange(len(i)) for i in self.states]
@@ -127,9 +123,6 @@ class TrajectoryDataset(Dataset):
         self.actions = [i for i, m in zip(self.actions, traj_len_mask) if m]
         self.rewards = [i for i, m in zip(self.rewards, traj_len_mask) if m]
         self.dones = [i for i, m in zip(self.dones, traj_len_mask) if m]
-        self.truncated = [
-            i for i, m in zip(self.truncated, traj_len_mask) if m
-        ]
         self.states = [i for i, m in zip(self.states, traj_len_mask) if m]
         self.returns = [i for i, m in zip(self.returns, traj_len_mask) if m]
         self.timesteps = [
