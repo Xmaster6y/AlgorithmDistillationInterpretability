@@ -16,29 +16,30 @@ class RecordHistory(BaseCallback):
         self.rollouts = {
             "observations": [],
             "actions"     : [],
-            "rewards"     : []
+            "rewards"     : [],
+            "dones"       : []
         }
         self.file_name = file_name
 
     def _on_step(self):
         # Retreive relevant information from locals
         obs = self.locals["obs_tensor"].cpu().numpy()
-        act = np.zeros((1, 2))
-        act[:, self.locals["actions"][0]] = 1.0
+        act = self.locals["actions"]
         rew = self.locals["rewards"]
+        dones = self.locals["dones"]  # dones = done or truncated
+
         # Add to dictionary
         self.rollouts["observations"].append(obs)
         self.rollouts["actions"].append(act)
         self.rollouts["rewards"].append(rew)
+        self.rollouts["dones"].append(dones)
 
     def _on_training_end(self):
         # Concatenate data to make everything a np array
-        self.rollouts["observations"] = np.concatenate(
-            self.rollouts["observations"], axis=0)
-        self.rollouts["actions"] = np.concatenate(
-            self.rollouts["actions"], axis=0)
-        self.rollouts["rewards"] = np.concatenate(
-            self.rollouts["rewards"], axis=0)
+        self.rollouts["observations"] = np.array(self.rollouts["observations"])
+        self.rollouts["actions"] = np.array(self.rollouts["actions"])
+        self.rollouts["rewards"] = np.array(self.rollouts["rewards"])
+        self.rollouts["dones"] = np.array(self.rollouts["dones"])
         # Write to a file
         np.savez(self.file_name, **self.rollouts)
 

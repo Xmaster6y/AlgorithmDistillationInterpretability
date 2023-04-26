@@ -32,6 +32,12 @@ class TrajectoryReader:
         elif self.path.endswith(".gz"):
             with gzip.open(self.path, "rb") as f:
                 data = pickle.load(f)
+        # if path ends in .npz, read with np.load
+        elif self.path.endswith(".npz"):
+            with open(self.path, "rb") as f:
+                np_file = np.load(f)
+                data = {key: np_file[key] for key in np_file}
+                data = {'data': data, 'metadata': {}}
         else:
             raise ValueError(
                 f"Path {self.path} is not a valid trajectory file"
@@ -46,7 +52,6 @@ class TrajectoryDataset(Dataset):
         trajectory_path,
         max_len=1,
         prob_go_from_end=0,
-        pct_traj=1.0,
         rtg_scale=1,
         normalize_state=False,
         preprocess_observations: Callable = None,
@@ -55,7 +60,6 @@ class TrajectoryDataset(Dataset):
         self.trajectory_path = trajectory_path
         self.max_len = max_len
         self.prob_go_from_end = prob_go_from_end
-        self.pct_traj = pct_traj
         self.device = device
         self.normalize_state = normalize_state
         self.rtg_scale = rtg_scale
@@ -69,8 +73,7 @@ class TrajectoryDataset(Dataset):
         observations = data["data"].get("observations")
         actions = data["data"].get("actions")
         rewards = data["data"].get("rewards")
-        dones = data["data"].get("dones")
-        truncated = data["data"].get("truncated")
+        dones = data["data"].get("dones")  # dones = done or truncated
         infos = data["data"].get("infos")
 
         observations = np.array(observations)
@@ -80,37 +83,22 @@ class TrajectoryDataset(Dataset):
         infos = np.array(infos, dtype=np.ndarray)
 
         # check whether observations are flat or an image
-        if observations.shape[-1] == 3:
+        if observations.shape[-1] == 3:  # if the last dimension of observations has size 3 (= 3 channels) -> image
             self.observation_type = "index"
-        elif observations.shape[-1] == 20:
+            t_observations = rearrange(torch.tensor(observations), "t b h w c -> (b t) h w c")
+        else:  # otherwise, assume one-hot
             self.observation_type = "one_hot"
-        else:
-            raise ValueError(
-                "Observations are not flat or images, check the shape of the observations: ",
-                observations.shape,
-            )
-
-        if self.observation_type != "flat":
-            t_observations = rearrange(
-                torch.tensor(observations), "t b h w c -> (b t) h w c"
-            )
-        else:
-            t_observations = rearrange(
-                torch.tensor(observations), "t b f -> (b t) f"
-            )
+            t_observations = rearrange(torch.tensor(observations), "t b f -> (b t) f")
 
         t_actions = rearrange(torch.tensor(actions), "t b -> (b t)")
         t_rewards = rearrange(torch.tensor(rewards), "t b -> (b t)")
         t_dones = rearrange(torch.tensor(dones), "t b -> (b t)")
-        t_truncated = rearrange(torch.tensor(truncated), "t b -> (b t)")
 
-        t_done_or_truncated = torch.logical_or(t_dones, t_truncated)
-        done_indices = torch.where(t_done_or_truncated)[0]
+        done_indices = torch.where(t_dones)[0]
 
         self.actions = torch.tensor_split(t_actions, done_indices + 1)
         self.rewards = torch.tensor_split(t_rewards, done_indices + 1)
         self.dones = torch.tensor_split(t_dones, done_indices + 1)
-        self.truncated = torch.tensor_split(t_truncated, done_indices + 1)
         self.states = torch.tensor_split(t_observations, done_indices + 1)
         self.returns = [r.sum() for r in self.rewards]
         self.timesteps = [torch.arange(len(i)) for i in self.states]
@@ -121,9 +109,6 @@ class TrajectoryDataset(Dataset):
         self.actions = [i for i, m in zip(self.actions, traj_len_mask) if m]
         self.rewards = [i for i, m in zip(self.rewards, traj_len_mask) if m]
         self.dones = [i for i, m in zip(self.dones, traj_len_mask) if m]
-        self.truncated = [
-            i for i, m in zip(self.truncated, traj_len_mask) if m
-        ]
         self.states = [i for i, m in zip(self.states, traj_len_mask) if m]
         self.returns = [i for i, m in zip(self.returns, traj_len_mask) if m]
         self.timesteps = [
@@ -139,7 +124,8 @@ class TrajectoryDataset(Dataset):
         self.max_ep_len = max([len(i) for i in self.states])
         self.metadata = data["metadata"]
 
-        self.indices = self.get_indices_of_top_p_trajectories(self.pct_traj)
+        # we want the trajectory indices to be in order of their generation -> indices = [0, 1, ..., num_trajectories]
+        self.indices = np.arange(0, self.num_trajectories)
         self.sampling_probabilities = self.get_sampling_probabilities()
 
         if self.normalize_state:
@@ -151,26 +137,6 @@ class TrajectoryDataset(Dataset):
         # TODO Make this way less hacky
         if self.preprocess_observations == one_hot_encode_observation:
             self.observation_type = "one_hot"
-
-    def get_indices_of_top_p_trajectories(self, pct_traj):
-        num_timesteps = max(int(pct_traj * self.num_timesteps), 1)
-        sorted_inds = np.argsort(self.returns)
-
-        num_trajectories = 1
-        timesteps = self.traj_lens[sorted_inds[-1]]
-        ind = self.num_trajectories - 1
-
-        while (
-            ind >= 0
-            and timesteps + self.traj_lens[sorted_inds[ind]] < num_timesteps
-        ):
-            timesteps += self.traj_lens[sorted_inds[ind]]
-            ind -= 1
-            num_trajectories += 1
-
-        sorted_inds = sorted_inds[-num_trajectories:]
-
-        return sorted_inds
 
     def get_sampling_probabilities(self):
         p_sample = self.traj_lens[self.indices] / sum(
@@ -424,3 +390,7 @@ def one_hot_encode_observation(img: torch.Tensor) -> torch.Tensor:
                 ] = 1
 
     return torch.from_numpy(out).float()
+
+
+if __name__ == '__main__':
+    tr = TrajectoryDataset('/home/lukas/Documents/AI/MI_AD_Project/Repos/AlgorithmDistillationInterpretability/tr_2env.npz')
