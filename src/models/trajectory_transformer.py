@@ -461,7 +461,7 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
             transformer_config=transformer_config,
             **kwargs,
         )
-
+        self.model_type = "algorithm_distillation"
         self.reward_embedding = nn.Sequential(
             nn.Linear(1, self.transformer_config.d_model, bias=False)
         )
@@ -554,17 +554,20 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
         )  # batch_size, block_size, n_embd or None
         reward_embeddings = self.get_reward_embedding(
             rewards
-        )  # batch_size, block_size, n_embd
+        )  if rewards is not None else None
+        # batch_size, block_size, n_embd
         time_embeddings = self.get_time_embedding(
             timesteps
         )  # batch_size, block_size, n_embd
         # use state_embeddings, actions, rewards to go and
+
         token_embeddings = self.get_token_embeddings(
             state_embeddings=state_embeddings,
             action_embeddings=action_embeddings,
             reward_embeddings=reward_embeddings,
             time_embeddings=time_embeddings,
         )
+
         return token_embeddings
 
     def get_action(self, states, actions, rewards, timesteps):
@@ -605,12 +608,12 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
 
         else:
             # TODO replace with einsum
-            x = x.reshape(
-                batch_size, seq_length, 2, self.transformer_config.d_model
-            )
+            
+            #x = x.reshape(batch_size, seq_length, 1, self.transformer_config.d_model)#TODO figure out why seq lenght is broken here
+            x = x.reshape(batch_size, x.shape[1], 1, self.transformer_config.d_model)
             x = x.permute(0, 2, 1, 3)
             # predict next action given state 
-            action_preds = self.predict_actions(x[:, 1])
+            action_preds = self.predict_actions(x[:, 0])
             return None, action_preds, None
 
     def forward(
@@ -624,10 +627,10 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
     ) -> Tuple[
         TT[...], TT["batch", "position"], TT["batch", "position"]  # noqa: F821
     ]:
+        
         batch_size = states.shape[0]
         seq_length = states.shape[1]
         no_actions = actions is None
-
         if no_actions is False:
             if actions.shape[1] < seq_length - 1:
                 raise ValueError(
