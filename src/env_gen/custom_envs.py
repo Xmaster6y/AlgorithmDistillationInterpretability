@@ -231,6 +231,9 @@ class NavigationBandit(GeneralTask):
         for reward_rule in self.reward_rules:
             reward_rule[3] = self.rng.random()
         # We need to re-init transition
+        self.transition[:, 0, :] = np.eye(n_states)
+        self.transition[:, 1, :] = 1
+        self.transition = self.transition / np.sum(self.transition, axis=2)[:, :, None]
 
 
 class DarkRoom(GeneralTask):
