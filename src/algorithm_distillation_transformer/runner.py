@@ -17,7 +17,7 @@ from src.config import (
 from src.environments.registration import register_envs
 from src.models.trajectory_transformer import (
     CloneTransformer,
-    DecisionTransformer,
+    AlgorithmDistillationTransformer,
 )
 
 # from .model import DecisionTransformer
@@ -122,8 +122,8 @@ def run_decision_transformer(
             {"dataset/num_trajectories": trajectory_data_set.num_trajectories}
         )
 
-    if offline_config.model_type == "decision_transformer":
-        model = DecisionTransformer(
+    if offline_config.model_type == "algorithm_distillation":
+        model = AlgorithmDistillationTransformer(
             environment_config=environment_config,
             transformer_config=transformer_config,
         )
@@ -151,7 +151,6 @@ def run_decision_transformer(
         test_frequency=offline_config.test_frequency,
         eval_frequency=offline_config.eval_frequency,
         eval_episodes=offline_config.eval_episodes,
-        initial_rtg=offline_config.initial_rtg,
         eval_max_time_steps=offline_config.eval_max_time_steps,
         eval_num_envs=offline_config.eval_num_envs,
     )
