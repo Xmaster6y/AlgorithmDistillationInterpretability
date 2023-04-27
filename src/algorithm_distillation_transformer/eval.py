@@ -153,7 +153,6 @@ def evaluate_dt_agent(
             )
 
         dones = np.logical_or(terminated, truncated)
-        current_trajectory_length += np.invert(dones)
         traj_lengths.extend(current_trajectory_length[dones].tolist())
         reward_list.extend(new_reward[dones])
         current_trajectory_length[dones] = 0
@@ -165,8 +164,7 @@ def evaluate_dt_agent(
             (
                 _obs,
                 _actions,
-                reward[batch_reset_indexes],
-                _rtg,
+                rewards[batch_reset_indexes],
                 timesteps[batch_reset_indexes],
                 mask[batch_reset_indexes],
             ) = initialize_padding_inputs(
