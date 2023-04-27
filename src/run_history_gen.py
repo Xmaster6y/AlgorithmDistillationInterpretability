@@ -4,7 +4,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.callbacks import BaseCallback
 from sb3_contrib import RecurrentPPO
 import numpy as np
-from .env_gen import *
+from env_gen import *
 import argparse
 import os
 
@@ -23,7 +23,7 @@ class RecordHistory(BaseCallback):
 
     def _on_step(self):
         # Retreive relevant information from locals
-        obs = self.locals["obs_tensor"].cpu().numpy()
+        obs = self.locals["obs_tensor"].cpu().numpy()[0]
         act = self.locals["actions"]
         rew = self.locals["rewards"]
         dones = self.locals["dones"]  # dones = done or truncated
@@ -44,11 +44,10 @@ class RecordHistory(BaseCallback):
         np.savez(self.file_name, **self.rollouts)
 
 
-def create_vector_environment(seed, n_envs):
+def create_vector_environment(seed, n_states, n_actions, n_envs, env_len):
     def create_env():
-        # Create environment with fixed seed
-        # All envs are Dark-Key-Doors with 10 states, 2 actions, and 16 steps
-        env = DarkKeyDoor(10, 2, 16, seed=seed)
+        # Create DarkKeyDoor environment with fixed seed
+        env = DarkKeyDoor(n_states, n_actions, env_len, seed=seed)
         env = Monitor(env)
         return env
     # Add in a couple other things to assist in training
@@ -56,10 +55,10 @@ def create_vector_environment(seed, n_envs):
     return venv
 
 
-def train_policy(venv, file_name, n_steps):
+def train_policy(venv, file_name, n_steps, buffer_size):
     # Trains a recurrent policy to play env with seed
     # Writes the data to file_name
-    model = RecurrentPPO("MlpLstmPolicy", venv, ent_coef=0.01, verbose=0, )
+    model = RecurrentPPO("MlpLstmPolicy", venv, ent_coef=0.01, verbose=1, n_steps=buffer_size, batch_size=buffer_size)
     record_history = RecordHistory(file_name)
     model = model.learn(total_timesteps=n_steps, callback=record_history)
 
@@ -70,10 +69,14 @@ if __name__ == "__main__":
     parser.add_argument("--n_seeds", type=int, default=500)
     parser.add_argument("--seed_start", type=int, default=0)
     parser.add_argument("--n_steps", type=int, default=40000)
+    parser.add_argument("--n_states", type=int, default=10)
+    parser.add_argument("--n_actions", type=int, default=2)
+    parser.add_argument("--max_env_len", type=int, default=16)
+    parser.add_argument("--n_rollouts", type=int, default=8)
     args = parser.parse_args()
 
     for env_seed in range(args.seed_start, args.seed_start+args.n_seeds):
         print(f"Training policy {env_seed - args.seed_start}")
-        venv = create_vector_environment(env_seed, 1)
+        venv = create_vector_environment(env_seed, args.n_states, args.n_actions, 1, args.max_env_len)
         file_path = os.path.join(args.path, f"{env_seed}")
-        train_policy(venv, file_path, args.n_steps)
+        train_policy(venv, file_path, args.n_steps, args.max_env_len * args.n_rollouts)
