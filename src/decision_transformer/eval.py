@@ -128,7 +128,6 @@ def evaluate_dt_agent(
         actions = actions[:, -(max_len - 1) :] if max_len > 1 else None
         timesteps = timesteps[:, -max_len:]
         rtg = rtg[:, -max_len:]
-
         if isinstance(model, DecisionTransformer):
             state_preds, action_preds, reward_preds = model.forward(
                 states=obs, actions=actions, rtgs=rtg, timesteps=timesteps
