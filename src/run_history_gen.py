@@ -4,7 +4,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.callbacks import BaseCallback
 from sb3_contrib import RecurrentPPO
 import numpy as np
-from env_gen import *
+from generation import *
 import argparse
 import os
 
@@ -68,11 +68,11 @@ if __name__ == "__main__":
     parser.add_argument("--path", type=str, required=True)
     parser.add_argument("--n_seeds", type=int, default=500)
     parser.add_argument("--seed_start", type=int, default=0)
-    parser.add_argument("--n_steps", type=int, default=40000)
-    parser.add_argument("--n_states", type=int, default=10)
+    parser.add_argument("--n_steps", type=int, default=12_000)
+    parser.add_argument("--n_states", type=int, default=12)
     parser.add_argument("--n_actions", type=int, default=2)
-    parser.add_argument("--max_env_len", type=int, default=16)
-    parser.add_argument("--n_rollouts", type=int, default=8)
+    parser.add_argument("--max_env_len", type=int, default=12)
+    parser.add_argument("--n_rollouts", type=int, default=4)
     args = parser.parse_args()
 
     for env_seed in range(args.seed_start, args.seed_start+args.n_seeds):

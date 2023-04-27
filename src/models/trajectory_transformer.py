@@ -11,7 +11,7 @@ from gymnasium.spaces import Box, Dict
 from torchtyping import TensorType as TT
 from transformer_lens import HookedTransformer, HookedTransformerConfig
 
-from src.config import EnvironmentConfig, TransformerModelConfig
+from config import EnvironmentConfig, TransformerModelConfig
 
 
 class TrajectoryTransformer(nn.Module):
@@ -454,6 +454,7 @@ class DecisionTransformer(TrajectoryTransformer):
 
         return state_preds, action_preds, reward_preds
 
+
 class AlgorithmDistillationTransformer(TrajectoryTransformer):
     def __init__(self, environment_config, transformer_config, **kwargs):
         super().__init__(
@@ -631,6 +632,7 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
         batch_size = states.shape[0]
         seq_length = states.shape[1]
         no_actions = actions is None
+
         if no_actions is False:
             if actions.shape[1] < seq_length - 1:
                 raise ValueError(
@@ -647,6 +649,7 @@ class AlgorithmDistillationTransformer(TrajectoryTransformer):
 
         # embed states and recast back to (batch, block_size, n_embd)
         token_embeddings = self.to_tokens(states, actions, rewards, timesteps)
+        
         x = self.transformer(token_embeddings)
         state_preds, action_preds, reward_preds = self.get_logits(
             x, batch_size, seq_length, no_actions=no_actions
@@ -742,7 +745,6 @@ class CloneTransformer(TrajectoryTransformer):
         time_embeddings = self.get_time_embedding(
             timesteps
         )  # batch_size, block_size, n_embd
-
         # use state_embeddings, actions, rewards to go and
         token_embeddings = self.get_token_embeddings(
             state_embeddings=state_embeddings,

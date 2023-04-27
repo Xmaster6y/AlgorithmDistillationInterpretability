@@ -7,15 +7,12 @@ from typing import List
 import torch as t
 from minigrid.wrappers import OneHotPartialObsWrapper, RGBImgPartialObsWrapper
 
-from src.config import (
+from config import (
     EnvironmentConfig,
     OfflineTrainConfig,
     TransformerModelConfig,
 )
-from src.models.trajectory_transformer import DecisionTransformer
-
-from .model import DecisionTransformer as DecisionTransformerLegacy
-from .offline_dataset import TrajectoryDataset
+from models.trajectory_transformer import DecisionTransformer
 
 
 @dataclass
@@ -254,4 +251,3 @@ def initialize_padding_inputs(
     ).to(device)
 
     return obs, actions, reward, timesteps, mask
-

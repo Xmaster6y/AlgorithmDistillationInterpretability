@@ -16,7 +16,7 @@ from minigrid.wrappers import (
     RGBImgPartialObsWrapper,
 )
 
-from src.environments.wrappers import ViewSizeWrapper
+# from .environments.wrappers import ViewSizeWrapper
 
 
 @dataclass
@@ -26,6 +26,7 @@ class EnvironmentConfig:
     """
 
     env_id: str = "MiniGrid-Dynamic-Obstacles-8x8-v0"
+    env: gym.Env = None
     one_hot_obs: bool = False
     img_obs: bool = False
     fully_observed: bool = False
@@ -41,25 +42,29 @@ class EnvironmentConfig:
     device: str = "cpu"
 
     def __post_init__(self):
-        env = gym.make(self.env_id)
+        if self.env is None:
+            self.env = gym.make(self.env_id)
 
         if self.env_id.startswith("MiniGrid"):
             if self.fully_observed:
-                env = FullyObsWrapper(env)
+                self.env = FullyObsWrapper(self.env)
             elif self.one_hot_obs:
-                env = OneHotPartialObsWrapper(env)
+                self.env = OneHotPartialObsWrapper(self.env)
             elif self.img_obs:
-                env = RGBImgPartialObsWrapper(env)
+                self.env = RGBImgPartialObsWrapper(self.env)
 
             if self.view_size != 7:
-                env = ViewSizeWrapper(env, self.view_size)
+                self.env = ViewSizeWrapper(self.env, self.view_size)
+        elif self.env_id.startswith("Graph"):
+            self.max_steps = self.env.max_steps
 
-        self.action_space = self.action_space or env.action_space
+        self.action_space = self.action_space or self.env.action_space
         self.observation_space = (
-            self.observation_space or env.observation_space
+            self.observation_space or self.env.observation_space
         )
         if isinstance(self.device, str):
             self.device = torch.device(self.device)
+    
 
 
 @dataclass
@@ -157,7 +162,7 @@ class OfflineTrainConfig:
     eval_episodes: int = 10
     model_type: str = "decision_transformer"
     convert_to_one_hot: bool = False
-    initial_rtg: list[float] = (0.0, 1.0)
+    initial_rtg = (0.0, 1.0)
     eval_max_time_steps: int = 100
     eval_num_envs: int = 8
 
