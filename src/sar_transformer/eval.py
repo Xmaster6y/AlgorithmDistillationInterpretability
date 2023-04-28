@@ -34,6 +34,22 @@ def get_max_len_from_model_type(model_type: str, n_ctx: int):
         return 1 + n_ctx // 2
 
 
+def evaluate_random_agent(env, n_its=10000):
+    # Simulate random walks    
+    total_reward = []
+    for i in range(n_its):
+        total_reward.append(0)
+        obs, _ = env.reset()
+        done = False
+        while not done:
+            action = env.action_space.sample()
+            obs, reward, done, _, info = env.step(action)
+            total_reward[-1] += reward
+    # Average episodic rewards
+    avg_reward = sum(total_reward) / len(total_reward)
+    return avg_reward
+
+
 def evaluate_ad_agent(
     model: AlgorithmDistillationTransformer,
     env_config: EnvironmentConfig,
@@ -53,8 +69,14 @@ def evaluate_ad_agent(
     # Set up enivornment statistics
     ep_rewards = [0]
     episode_length = env_config.max_steps
+    assert max_len % episode_length == 0  # This should be the case, or else the model and env are mismatched
+    n_prev_episodes = max_len // episode_length
     env = env_config.env
     n_obs = env.observation_space.shape[0]
+    
+    # Measure baseline scores
+    random_score = evaluate_random_agent(env)
+    high_score = -1
     
     # Set up buffers
     total_steps = 0
@@ -86,7 +108,7 @@ def evaluate_ad_agent(
             rewards=rewards,
             timesteps=time,
         )
-        idx = min(119, total_steps)
+        idx = min(max_len - 1, total_steps)
         act_probs = torch.softmax(action_preds[0, idx] / temp, dim=-1).detach().cpu().numpy()
         act = np.random.choice(np.arange(act_probs.shape[0]), p=act_probs)
         
@@ -102,7 +124,10 @@ def evaluate_ad_agent(
             current_episode += 1
             # Update pbar
             pbar.update(1)
-            pbar.set_description(f"Evaluating AD, Reward: {sum(ep_rewards[-4:]) / len(ep_rewards[-4:])}")
+            ad_score = sum(ep_rewards[-n_prev_episodes:]) / len(ep_rewards[-n_prev_episodes:])
+            if high_score < ad_score:
+                high_score = ad_score
+            pbar.set_description(f"EVAL  - Random walk score: {random_score:.4f}, AD high score: {high_score:.4f}, AD final score: {ad_score:.4f}")
             ep_rewards.append(0)
 
         # Update buffers
@@ -114,7 +139,7 @@ def evaluate_ad_agent(
             reward_buffer = np.roll(reward_buffer, -1, axis=1)
             time_buffer = np.roll(time_buffer, -1, axis=1)
             
-        idx = min(119, total_steps)
+        idx = min(max_len - 1, total_steps)
         state_buffer[:, idx] = obs
         action_buffer[:, idx - 1, 0] = act
         reward_buffer[:, idx - 1, 0] = reward

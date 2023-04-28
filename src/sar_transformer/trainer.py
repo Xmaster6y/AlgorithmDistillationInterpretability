@@ -70,7 +70,7 @@ def train(
             torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
             optimizer.step()
 
-            pbar.set_description(f"Training AD, Epoch {epoch+1}: {loss.item():.4f}")
+            pbar.set_description(f"TRAIN - Epoch {epoch+1}: {loss.item():.4f}")
             pbar.update(1)
             
             if track:
