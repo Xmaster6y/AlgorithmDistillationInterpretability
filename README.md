@@ -1,11 +1,11 @@
-# Decision Transformer Interpretability
+# Algorithm Distillation Interpretability
 
-[![build](https://github.com/jbloomAus/DecisionTransformerInterpretability/actions/workflows/build.yml/badge.svg)](https://github.com/jbloomAus/DecisionTransformerInterpretability/actions/workflows/build.yml)
+[![build](https://github.com/jbloomAus/DecisionTransformerInterpretability/actions/workflows/build.yml/badge.svg)](https://github.com/ADInterpretabilityTeam/AlgorithmDistillationInterpretability/actions/workflows/build.yml)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # [Docs Here](https://jbloomaus.github.io/DecisionTransformerInterpretability/) [App Here](https://jbloomaus-decisiontransformerinterpretability-app-4edcnc.streamlit.app/)
 
-This project is designed to facilitate mechanistic interpretability of decision transformers as well as RL agents using transformer architectures.
+This project is designed to facilitate mechanistic interpretability of algorithm distillation transformers.
 
 This is achieved via:
 
@@ -16,12 +16,12 @@ This is achieved via:
 Future work will include:
 
 - creating an interpretability portfolio, expanding various exploratory techniques already present in the streamlit app.
-- solving tasks which require memory or language instruction. Many MiniGrid tasks require agents have memory and currently our PPO agent only responds to the last timestep.
+- solving tasks which require memory or language instruction. 
 - validating hypotheses about model circuits using [casual scrubbing](https://www.alignmentforum.org/posts/JvZhhzycHu2Yd57RN/causal-scrubbing-a-method-for-rigorously-testing).
 
 ## Write Up
 
-You can find an initial technical report for this project [here](https://www.lesswrong.com/posts/bBuBDJBYHt39Q5zZy/decision-transformer-interpretability).
+Work in progress.
 
 ## Package Overview
 
@@ -107,7 +107,7 @@ python -m src.run_decision_transformer \
     --initial_rtg 1 \
     --prob_go_from_end 0.1 \
     --eval_max_time_steps 1000 \
-    --track True
+    --track
 
 ```
 
@@ -188,13 +188,11 @@ TOTAL                                 758    190    75%
 
 # Next Steps
 
-- Getting PPO to work with a transformer architecture.
-- Analyse this model/the decision transformer/a behavioural clone and publish the results.
+- Analyse a model and test the results
 - Get a version of causal-scrubbing working
-- Study BabyAI (adapt all models to take an instruction token that is prepended to the context window)
 
 # Relevant Projects:
 
-- [decision transformers](https://arxiv.org/pdf/2106.01345.pdf)
+- [algorithm distillation](https://arxiv.org/abs/2210.14215)
 - [gym-minigrid](https://github.com/Farama-Foundation/Minigrid)
 - [transformerlens](https://github.com/neelnanda-io/TransformerLens)
