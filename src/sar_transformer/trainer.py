@@ -17,18 +17,15 @@ from .eval import evaluate_ad_agent
 def train(
     model,
     train_dataloader,
-    env,
+    env_config,
     lr=3e-4,
     clip=1.,
     device="cuda",
     track=False,
     train_epochs=100,
-    eval_frequency=10,
-    eval_episodes=10,
-    initial_rtg=[0.0, 1.0],
-    eval_max_time_steps=100,
-    eval_num_envs=8,
-):
+    eval_frequency=5,
+    eval_length=100,
+    ):
     # Create loss function and model optimizer
     loss_fn = nn.CrossEntropyLoss()
     model = model.to(device)
@@ -73,9 +70,9 @@ def train(
             torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
             optimizer.step()
 
-            pbar.update(1)
             pbar.set_description(f"Training AD, Epoch {epoch+1}: {loss.item():.4f}")
-
+            pbar.update(1)
+            
             if track:
                 wandb.log({"train/loss": loss.item()}, step=total_batches)
                 tokens_seen = (
@@ -91,39 +88,15 @@ def train(
         pbar.close()
         
         # # at test frequency
-        if epoch % eval_frequency == -1:
+        if (epoch+1) % eval_frequency == 0:
             # Evaluate the performance of the model on the new env
-            eval_env_config = EnvironmentConfig(
-                env_id=env.spec.id,
-                capture_video=True,
-                max_steps=min(
-                    model.environment_config.max_steps, eval_max_time_steps
-                ),
-                fully_observed=False,
-                one_hot_obs=(trajectory_data_set.observation_type == "one_hot"),
-                view_size=env.observation_space["image"].shape[0]
-                if "image" in list(env.observation_space.keys())
-                else 7,
-            )
-
-            eval_env_func = make_env(
-                config=eval_env_config,
-                seed=batch,
-                idx=0,
-                run_name=f"dt_eval_videos_{batch}",
-            )
-
-            for rtg in initial_rtg:
-                evaluate_dt_agent(
-                    env_id=env.spec.id,
-                    model=model,
-                    env_func=eval_env_func,
-                    trajectories=eval_episodes,
-                    track=track,
-                    batch_number=total_batches,
-                    initial_rtg=float(rtg),
-                    device=device,
-                    num_envs=eval_num_envs,
-                )
+            evaluate_ad_agent(
+                model=model,
+                env_config=env_config,
+                n_episodes=eval_length,
+                temp=1,
+                device=device,
+                track=track
+             )
 
     return model
