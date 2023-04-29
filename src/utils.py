@@ -304,23 +304,22 @@ def train_ucb(venv, file_name, n_steps):
         rollouts["rewards"].append(reward)
         rollouts["dones"].append(done)
         # Update UCB scores
-        means[action] = (means[action] * visits[action] + reward) / (visits[action] + 1)
-        visits[action] += 1
-    scores = means + np.sqrt(np.log(visits.sum()) / visits)
+        means[action] = reward
+        visits[action] = 1
     # Run UCB
     for t in range(env.action_space.n, n_steps):
+        # Compute best action according to confidence intervals
+        scores = means + np.sqrt(2 * np.log(t) / visits)
         action = np.argmax(scores)
         obs, _ = env.reset()
         obs, reward, done, _, _ = env.step(action)
-        # Add relevant to rollouts
+        # Add relevant to rollouts and update statistics
         rollouts["observations"].append(obs)
         rollouts["actions"].append(action)
         rollouts["rewards"].append(reward)
         rollouts["dones"].append(done)
-        # Update UCB scores
         means[action] = (means[action] * visits[action] + reward) / (visits[action] + 1)
         visits[action] += 1
-        scores = means + np.sqrt(np.log(t + 1) / visits)
     # Concatenate data to make everything a np array
     rollouts["observations"] = np.array(rollouts["observations"])
     rollouts["actions"] = np.array(rollouts["actions"])[:, None]
