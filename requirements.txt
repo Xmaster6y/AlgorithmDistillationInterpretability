@@ -54,3 +54,9 @@ streamlit==1.16.0
 
 # typeguard
 typeguard==2.13.3
+
+# stable-baselines3 with gymnasium support
+git+https://github.com/Stable-Baselines-Team/stable-baselines3-contrib@feat/gymnasium-support
+
+# networkx for working with graphs
+networkx==3.1
