@@ -8,12 +8,12 @@ from tqdm import tqdm
 from copy import deepcopy
 
 import wandb
-from models.trajectory_transformer import (
+from src.models.trajectory_transformer import (
     DecisionTransformer,
     AlgorithmDistillationTransformer
 )
 
-from config import EnvironmentConfig
+from src.config import EnvironmentConfig
 
 
 def get_max_len_from_model_type(model_type: str, n_ctx: int):
@@ -150,29 +150,21 @@ def evaluate_ad_agent(
     
     if track:
         # log statistics at batch number but prefix with eval
-        for key, value in statistics.items():
-            if key == "initial_rtg":
-                continue
-            if key == "traj_lengths":
                 wandb.log(
                     {
-                        f"eval/{str(initial_rtg)}/traj_lengths": wandb.Histogram(
-                            value
+                        f"eval/ad_score": wandb.Histogram(
+                            ad_score
                         )
                     },
-                    step=batch_number,
+                    #step=batch_number,
                 )
-            elif key == "rewards":
                 wandb.log(
                     {
-                        f"eval/{str(initial_rtg)}/rewards": wandb.Histogram(
-                            value
-                        )
+                        f"eval/high_score":
+                            high_score
+                        
                     },
-                    step=batch_number,
+                    #step=batch_number,
                 )
-            wandb.log(
-                {f"eval/{str(initial_rtg)}/" + key: value}, step=batch_number
-            )
 
     return ep_rewards

@@ -4,8 +4,8 @@ from einops import rearrange
 from tqdm import tqdm
 
 import wandb
-from config import EnvironmentConfig
-from models.trajectory_transformer import (
+from src.config import EnvironmentConfig
+from src.models.trajectory_transformer import (
     AlgorithmDistillationTransformer,
     TrajectoryTransformer,
 )
@@ -74,10 +74,11 @@ def train(
             pbar.update(1)
             
             if track:
+                batch_size = s.shape[0]
                 wandb.log({"train/loss": loss.item()}, step=total_batches)
                 tokens_seen = (
                     (total_batches + 1)
-                    * batch_size
+                    * batch_size 
                     * (model.transformer_config.n_ctx // 3)
                 )
                 wandb.log(

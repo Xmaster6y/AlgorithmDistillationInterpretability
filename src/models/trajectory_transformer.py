@@ -11,7 +11,8 @@ from gymnasium.spaces import Box, Dict
 from torchtyping import TensorType as TT
 from transformer_lens import HookedTransformer, HookedTransformerConfig
 
-from config import EnvironmentConfig, TransformerModelConfig
+from src.config  import EnvironmentConfig, TransformerModelConfig
+
 
 
 class TrajectoryTransformer(nn.Module):
