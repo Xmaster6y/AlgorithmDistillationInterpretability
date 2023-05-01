@@ -327,3 +327,21 @@ def train_ucb(venv, file_name, n_steps):
     rollouts["dones"] = np.array(rollouts["dones"])[:, None]
     # Write to a file
     np.savez(file_name, **rollouts)
+
+def store_transformer_model(path, model, offline_config):
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "offline_config": json.dumps(
+                offline_config, cls=ConfigJsonEncoder
+            ),
+            "environment_config": json.dumps(
+                model.environment_config, cls=ConfigJsonEncoder
+            ),
+            "model_config": json.dumps(
+                model.transformer_config, cls=ConfigJsonEncoder
+            ),
+        },
+        path,
+    )
+

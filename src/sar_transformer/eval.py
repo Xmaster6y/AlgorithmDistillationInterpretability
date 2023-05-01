@@ -8,12 +8,12 @@ from tqdm import tqdm
 from copy import deepcopy
 
 import wandb
-from models.trajectory_transformer import (
+from src.models.trajectory_transformer import (
     DecisionTransformer,
     AlgorithmDistillationTransformer
 )
 
-from config import EnvironmentConfig
+from src.config import EnvironmentConfig
 
 
 def get_max_len_from_model_type(model_type: str, n_ctx: int):

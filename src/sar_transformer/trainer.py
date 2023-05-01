@@ -4,8 +4,8 @@ from einops import rearrange
 from tqdm import tqdm
 
 import wandb
-from config import EnvironmentConfig
-from models.trajectory_transformer import (
+from src.config import EnvironmentConfig
+from src.models.trajectory_transformer import (
     AlgorithmDistillationTransformer,
     TrajectoryTransformer,
 )
