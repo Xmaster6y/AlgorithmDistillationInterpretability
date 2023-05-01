@@ -38,7 +38,7 @@ def run_decision_transformer(
     )
 
     
-    train_loader = create_history_dataloader(history_dataset, 128, 256*128)
+    train_loader = create_history_dataloader(history_dataset, offline_config.batch_size, 256*128)
 
     env = DarkKeyDoor(12, 2, 12, seed=500)
     environment_config = EnvironmentConfig(
@@ -69,7 +69,7 @@ def run_decision_transformer(
         wandb.log({"dataset/base_action_frequencies": wandb.Plotly(fig)})
         """
         wandb.log(
-            {"dataset/num_trajectories": history_dataset.num_trajectories}
+            {"dataset/num_trajectories": history_dataset.n_histories}
         )
         
     model = AlgorithmDistillationTransformer(
