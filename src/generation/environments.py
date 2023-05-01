@@ -166,15 +166,18 @@ class GeneralTask(gym.Env):
 
 
 class MultiArmedBandit(GeneralTask):
-    """ """
+    """
+    Environment with n_arms actions, each with a different probability of
+    yielding reward.  Probabilities are sampled from Beta distribution.
+    """
 
-    def __init__(self, n_arms, n_steps, seed=None):
+    def __init__(self, n_arms, seed=None):
         super().__init__(
             1,
             n_arms,
             n_arms,
             0,
-            n_steps,
+            1,
             prob_use_action=1.0,
             prob_use_flag=0.0,
             seed=seed,
@@ -182,7 +185,10 @@ class MultiArmedBandit(GeneralTask):
         )
         # We need to reinit probs for the rewards
         for reward_rule in self.reward_rules:
-            reward_rule[3] = self.rng.random()
+            reward_rule[3] = self.rng.beta(1, 5)
+        self.reward_rules[
+            self.rng.integers(0, len(self.reward_rules))
+            ][3] = 1.0  # Make one of the arms the best
 
 
 class NavigationBandit(GeneralTask):

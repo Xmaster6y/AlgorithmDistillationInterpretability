@@ -16,7 +16,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_env_len", type=int, default=12)
     parser.add_argument("--n_rollouts", type=int, default=4)
     args = parser.parse_args()
-
+    
     for env_seed in range(args.seed_start, args.seed_start+args.n_seeds):
         print(f"Training policy {env_seed - args.seed_start}")
         venv = create_vector_environment(

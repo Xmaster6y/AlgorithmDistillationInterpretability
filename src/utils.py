@@ -255,7 +255,7 @@ def create_environment_from_id(env_id, n_states, n_actions, max_steps, seed):
         env = DarkRoom(n_states, n_actions, max_steps, seed=seed)
     elif env_id == "ArmedBandit":
         assert n_states == 1 and max_steps == 1, "--n_states and --max_env_len should be set to 1"  # Armed Bandit only supports single state
-        env = MultiArmedBandit(n_actions, max_steps, seed=seed)
+        env = MultiArmedBandit(n_actions, seed=seed)
 
     return env
 
@@ -263,7 +263,13 @@ def create_environment_from_id(env_id, n_states, n_actions, max_steps, seed):
 def create_vector_environment(env_id, n_envs, n_states, n_actions,  max_steps, seed):
     def create_env():
         # Create DarkKeyDoor environment with fixed seed
-        env = create_environment_from_id(env_id, n_states, n_actions, max_steps, seed)
+        env = create_environment_from_id(
+            env_id=env_id,
+            n_states=n_states,
+            n_actions=n_actions,
+            max_steps=max_steps,
+            seed=seed
+        )
         env = Monitor(env)
         return env
     # Add in a couple other things to assist in training
