@@ -1,13 +1,18 @@
 import argparse
 import os
-from utils import *
+from .utils import *
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", type=str, required=True)
-    parser.add_argument("--env_id", type=str, required=True, choices=["DarkRoom", "DarkKeyDoor", "ArmedBandit"])
+    parser.add_argument("--env_id", type=str, required=True, choices=[
+        "DarkRoom",
+        "DarkKeyDoor",
+        "ArmedBandit",
+        "SimpleDarkRoom",
+        "SimpleDarkKeyDoor"])
     parser.add_argument("--n_seeds", type=int, default=500)
     parser.add_argument("--seed_start", type=int, default=0)
     parser.add_argument("--n_steps", type=int, default=12_000)
@@ -29,16 +34,16 @@ if __name__ == "__main__":
         )
         file_path = os.path.join(args.path, f"{env_seed}")
         # We want to use PPO for DarkRoom and DarkKeyRoom, and UCB for MultiArmedBandits
-        if args.env_id in ["DarkRoom", "DarkKeyRoom"]:
+        if args.env_id == "ArmedBandit":
+            train_ucb(
+                venv=venv,
+                file_name=file_path,
+                n_steps=args.n_steps,
+            )
+        else:
             train_policy(
                 venv=venv,
                 file_name=file_path,
                 n_steps=args.n_steps,
                 buffer_size=args.max_env_len * args.n_rollouts
-            )
-        elif args.env_id in ["ArmedBandit"]:
-            train_ucb(
-                venv=venv,
-                file_name=file_path,
-                n_steps=args.n_steps,
             )

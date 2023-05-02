@@ -192,7 +192,10 @@ class MultiArmedBandit(GeneralTask):
 
 
 class NavigationBandit(GeneralTask):
-    """ """
+    """
+    Each state has an action to pull a lever that will yield reward with some
+    probability, or another action that puts the agent at a random state.
+    """
 
     def __init__(self, n_states, n_steps, seed=None):
         super().__init__(
