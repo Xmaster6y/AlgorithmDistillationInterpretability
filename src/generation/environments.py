@@ -83,10 +83,15 @@ class GeneralTask(gym.Env):
         )  # Choose new starting position
         self.current_flag = 0  # Reset flag
         self.current_step = 0
+        self.prev_state = None
+        self.prev_action = None
 
         return self._get_obs(), {}
 
     def step(self, action):
+        # Save previous state/action pair
+        self.prev_state = self.current_state
+        self.prev_action = action
         # Sample the next state from the transition matrix
         t_probs = self.transition[self.current_state, action]
         next_state = np.random.choice(self.n_states, 1, p=t_probs)[
@@ -133,31 +138,49 @@ class GeneralTask(gym.Env):
             return self._render_frame()
 
     def _render_frame(self):
-        # Draw transition matrix as a graph
-        adj_matrix = self.transition.sum(1) != 0
-        graph = nx.DiGraph(incoming_graph_data=adj_matrix)
+        graph = nx.DiGraph()
+        # Add nodes to graph
+        node_color_map = []
+        node_edge_sizes = []
+        for s in range(self.n_states):
+            graph.add_node(s)
+            node_color_map.append("lightblue")
+            node_edge_sizes.append(0)
+        # Add edges to graph
+        edge_colors = []
+        for ls in range(self.transition.shape[0]):
+            for la in range(self.transition.shape[1]):
+                for ns in range(self.transition.shape[2]):
+                    if self.transition[ls, la, ns] > 0:
+                        if ls == self.prev_state and la == self.prev_action:
+                            edge_colors.append("darkgoldenrod")
+                        else:
+                            edge_colors.append("black")
+                        graph.add_edge(ls, ns)
         # Label current state, reward states, and flag states
-        color_map = ["lightblue" for _ in range(self.n_states)]
         for reward_rule in self.reward_rules:
             reward_node = reward_rule[0]
             if reward_node != -1:
-                color_map[reward_node] = "lightgreen"
+                node_color_map[reward_node] = "lightgreen"
         for flag_rule in self.flag_rules:
             flag_node = flag_rule[0]
             if flag_node != -1:
-                color_map[flag_node] = "salmon"
-        edge_colors = [0 for i in range(self.n_states)]
-        edge_colors[self.current_state] = 5
+                node_color_map[flag_node] = "salmon"
+        node_edge_sizes[self.current_state] = 5
         # Draw image and return image array
         fig, ax = plt.subplots(figsize=(6, 6))
         nx.draw_circular(
             graph,
             ax=ax,
+            connectionstyle='arc3, rad = 0.1',
             with_labels=True,
-            node_color=color_map,
+            node_color=node_color_map,
             font_weight="bold",
             edgecolors="darkgoldenrod",
-            linewidths=edge_colors,
+            linewidths=node_edge_sizes,
+            edge_color=edge_colors,
+            arrowsize=15,
+            width=1.5,
             node_size=800,
         )
         fig.canvas.draw()
