@@ -19,8 +19,8 @@ import os
 import torch
 import wandb
 
-from generation import *
-from config import ConfigJsonEncoder
+from src.generation import *
+from src.config import ConfigJsonEncoder
 
 
 class TrajectoryWriter:

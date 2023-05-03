@@ -57,9 +57,8 @@ def test_decision_transformer(download_training_data, n_ctx):
         test_epochs=10,
         test_frequency=100,
         eval_frequency=100,
-        eval_episodes=10,
+        eval_episodes=100,
         initial_rtg=[-1, 0, 1],
-        eval_max_time_steps=1000,
         model_type="decision_transformer",
     )
 
@@ -108,8 +107,7 @@ def test_clone_transformer(download_training_data, n_ctx):
         test_epochs=10,
         test_frequency=100,
         eval_frequency=100,
-        eval_episodes=10,
-        eval_max_time_steps=1000,
+        eval_episodes=100,
     )
 
     run_decision_transformer(
@@ -157,7 +155,6 @@ def test_decision_transformer_bespoke():
         eval_frequency=3,
         eval_episodes=10,
         initial_rtg=[0, 1],
-        eval_max_time_steps=50,
         model_type="decision_transformer",
         eval_num_envs=16,
         convert_to_one_hot=True,

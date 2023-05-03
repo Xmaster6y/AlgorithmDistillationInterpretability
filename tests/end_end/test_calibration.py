@@ -84,7 +84,6 @@ def offline_config() -> OfflineTrainConfig:
         eval_episodes=10,
         model_type="decision_transformer",
         initial_rtg=[0.0, 1.0],
-        eval_max_time_steps=100,
         eval_num_envs=8,
     )
     return offline_config

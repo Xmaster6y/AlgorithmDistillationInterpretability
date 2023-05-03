@@ -152,9 +152,8 @@ def evaluate_ad_agent(
         # log statistics at batch number but prefix with eval
                 wandb.log(
                     {
-                        f"eval/ad_score": wandb.Histogram(
-                            ad_score
-                        )
+                        f"eval/ad_score": ad_score
+                        
                     },
                     #step=batch_number,
                 )
