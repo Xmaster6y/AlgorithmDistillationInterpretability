@@ -185,7 +185,9 @@ class GeneralTask(gym.Env):
         )
         fig.canvas.draw()
         data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        return data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        output = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        plt.close(fig)
+        return output
 
 
 class MultiArmedBandit(GeneralTask):

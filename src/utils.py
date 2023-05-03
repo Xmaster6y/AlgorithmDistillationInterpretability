@@ -289,8 +289,8 @@ def train_policy(venv, file_name, n_steps, buffer_size):
     record_history = RecordHistory()
     model = model.learn(total_timesteps=n_steps, callback=record_history)
     data = record_history.rollouts
-    data["env"] = venv.get_attr("env")[0]
-    np.savez(file_name, data)
+    data["env"] = np.array(venv.get_attr("env")[0])
+    np.savez(file_name, **data)
 
 
 def train_ucb(venv, file_name, n_steps):
@@ -339,7 +339,7 @@ def train_ucb(venv, file_name, n_steps):
     rollouts["actions"] = np.array(rollouts["actions"])[:, None]
     rollouts["rewards"] = np.array(rollouts["rewards"])[:, None]
     rollouts["dones"] = np.array(rollouts["dones"])[:, None]
-    rollouts["env"] = env
+    rollouts["env"] = np.array(env)
     # Write to a file
     np.savez(file_name, **rollouts)
 

@@ -46,7 +46,3 @@ def random_spanning_tree(n, rng):
             spanning_tree[next_node, current] = 1
         current = next_node
     return spanning_tree
-
-
-def visualize_policy():
-    pass
