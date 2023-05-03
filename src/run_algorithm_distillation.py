@@ -39,7 +39,6 @@ if __name__ == "__main__":
         eval_episodes=args.eval_episodes,
         eval_num_envs=args.eval_num_envs,
         prob_go_from_end=args.prob_go_from_end,
-        eval_max_time_steps=args.eval_max_time_steps,
         track=args.track,
         device=run_config.device
     )

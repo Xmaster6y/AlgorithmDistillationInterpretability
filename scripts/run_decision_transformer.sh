@@ -23,5 +23,4 @@ python -m src.run_decision_transformer \
     --initial_rtg 0 \
     --initial_rtg 1 \
     --prob_go_from_end 0.1 \
-    --eval_max_time_steps 1000 \
     --track True

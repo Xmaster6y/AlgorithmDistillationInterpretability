@@ -1,7 +1,7 @@
 
 import argparse
 import json
-
+import numpy as np
 import torch as t
 from src.config import (
     EnvironmentConfig,
@@ -55,7 +55,7 @@ def parse_args():
     parser.add_argument("--wandb_entity", type=str, default=None)
     parser.add_argument("--test_frequency", type=int, default=100)
     parser.add_argument("--eval_frequency", type=int, default=100)
-    parser.add_argument("--eval_episodes", type=int, default=10)
+    parser.add_argument("--eval_episodes", type=int, default=100)
     parser.add_argument("--eval_num_envs", type=int, default=8)
     parser.add_argument(
         "--initial_rtg",
@@ -65,7 +65,6 @@ def parse_args():
         default=[0, 1],
     )
     parser.add_argument("--prob_go_from_end", type=float, default=0.1)
-    parser.add_argument("--eval_max_time_steps", type=int, default=1000)
     parser.add_argument("--cuda", action=argparse.BooleanOptionalAction)
     parser.add_argument(
         "--model_type", type=str, default="algorithm_distillation"
@@ -120,74 +119,7 @@ def get_max_len_from_model_type(model_type: str, n_ctx: int):
         return 1 + n_ctx // 2
 
 
-def initialize_padding_inputs(
-    max_len: int,
-    initial_obs: dict,
-    action_pad_token: int,
-    batch_size=1,
-    device="cpu",
-):
-    """
-    Initializes input tensors for a decision transformer based on the given maximum length of the sequence, initial observation, initial return-to-go (rtg) value,
-    and padding token for actions.
-    Padding token for rtg is assumed to be the initial RTG at all values. This is important.
-    Padding token for initial obs is 0. But it could be -1 and we might parameterize in the future.
-    Mask is initialized to 0.0 and then set to 1.0 for all values that are not padding (one value currently)
-    Args:
-    - max_len (int): maximum length of the sequence
-    - initial_obs (Dict[str, Union[torch.Tensor, np.ndarray]]): initial observation dictionary, containing an "image" tensor with shape (batch_size, channels, height, width)
-    - action_pad_token (int): padding token used to initialize the actions tensor
-    - batch_size (int): batch size of the sequences (default: 1)
-    Returns:
-    - obs (torch.Tensor): tensor of shape (batch_size, max_len, channels, height, width), initialized with zeros and the initial observation in the last dimension
-    - actions (torch.Tensor): tensor of shape (batch_size, max_len - 1, 1), initialized with the padding token
-    - reward (torch.Tensor): tensor of shape (batch_size, max_len, 1), initialized with zeros
-    - rtg (torch.Tensor): tensor of shape (1, max_len, 1), initialized with the initial rtg value and broadcasted to the batch size dimension
-    - timesteps (torch.Tensor): tensor of shape (batch_size, max_len, 1), initialized with zeros
-    - mask (torch.Tensor): tensor of shape (batch_size, max_len), initialized with zeros and ones at the last position to mark the end of the sequence
-    """
 
-    device = t.device(device)
-
-    mask = t.concat(
-        (
-            t.zeros((batch_size, max_len - 1), dtype=t.bool),
-            t.ones((batch_size, 1), dtype=t.bool),
-        ),
-        dim=1,
-    ).to(device)
-
-    obs_dim = initial_obs["image"].shape[-3:]
-    if len(initial_obs["image"].shape) == 3:
-        assert (
-            batch_size == 1
-        ), "only one initial obs provided but batch size > 1"
-        obs_image = t.tensor(initial_obs["image"])[None, None, :, :, :].to(
-            device
-        )
-    elif len(initial_obs["image"].shape) == 4:
-        obs_image = t.tensor(initial_obs["image"])[:, None, :, :, :].to(device)
-    else:
-        raise ValueError(
-            "initial obs image has invalid shape: {}".format(
-                initial_obs["image"].shape
-            )
-        )
-
-    
-    obs = t.concat(
-        (
-            t.zeros((batch_size, max_len - 1, *obs_dim)).to(device),
-            obs_image,
-        ),
-        dim=1,
-    ).to(float)
-    reward = t.zeros((batch_size, max_len-1, 1), dtype=t.float).to(device)
-    timesteps = t.zeros((batch_size, max_len, 1), dtype=t.long).to(device)
-
-    actions = (
-        t.ones(batch_size, max_len - 1, 1, dtype=t.long) * action_pad_token
-    ).to(device)
     
 def store_transformer_model(path, model, offline_config):
     t.save(

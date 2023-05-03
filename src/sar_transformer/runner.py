@@ -91,7 +91,7 @@ def run_decision_transformer(
     track=offline_config.track,
     train_epochs=offline_config.train_epochs,
     eval_frequency=offline_config.eval_frequency,
-    eval_length=offline_config.eval_max_time_steps,#TODO check its really this number and num episodes
+    eval_length=offline_config.eval_episodes,#TODO check its really this number and num episodes
     )
         
     if run_config.track:
