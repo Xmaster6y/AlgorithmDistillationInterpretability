@@ -1,3 +1,4 @@
+from collections import defaultdict
 from .utils import *
 import numpy as np
 
@@ -5,14 +6,20 @@ import numpy as np
 def sample_transition_rules(n_states, n_actions, rng, use_mcmc=True):
     # Generates matrix of the form [n_states, n_actions, n_states]
     # Start by created a strongly-connected directed graph (a loop)
-    T = np.zeros((n_states, n_actions, n_states,))
+    T = np.zeros(
+        (
+            n_states,
+            n_actions,
+            n_states,
+        )
+    )
     adj_matrix = np.eye(n_states)
     adj_matrix = np.concatenate((adj_matrix[1:, :], adj_matrix[:1, :]), axis=0)
     T[:, 0, :] = adj_matrix
     # If there is a second action, set that equal to the edges reversed
     if n_actions >= 2:
         T[:, 1, :] = np.transpose(T[:, 0, :])
-    # For the other actions, find a random state that we can go to 
+    # For the other actions, find a random state that we can go to
     for a in range(2, n_actions):
         for s in range(n_states):
             # Create a random edge
@@ -29,7 +36,9 @@ def sample_transition_rules(n_states, n_actions, rng, use_mcmc=True):
 def markov_chain_monte_carlo(T, rng, n_its=100_000):
     # Performs Markov Chain Monte Carlo to sample a random strongly-connected graph
     n_states, n_actions, _ = T.shape
-    for i in range(n_its):  # Not possible to calculate in general what the mixing time is here
+    for i in range(
+        n_its
+    ):  # Not possible to calculate in general what the mixing time is here
         rand_prev_state = rng.integers(0, n_states)
         rand_next_state = rng.integers(0, n_states)
         rand_act = rng.integers(0, n_actions)
@@ -55,37 +64,76 @@ def sample_observation_rules(n_states):
     return obs
 
 
-def sample_reward_rules(n_states, n_actions, n_rewards, rng, prob_use_old_state=1.0, prob_use_new_state=0.0, prob_use_action=0.33, prob_use_flag=0.33):
+def sample_reward_rules(
+    n_states,
+    n_actions,
+    n_rewards,
+    rng,
+    prob_use_old_state=1.0,
+    prob_use_new_state=0.0,
+    prob_use_action=0.33,
+    prob_use_flag=0.33,
+):
     # Rules are of the form (old_state, new_state, action, probability, value, flag)
+    # Generate all possible rules
     rules = []
+    examples = [
+        (prev_state, new_state, action)
+        for prev_state in range(-1, n_states)
+        for new_state in range(-1, n_states)
+        for action in range(-1, n_actions)
+    ]
+    # Sample from the list of valid rules until we have enough
     for nr in range(n_rewards):
         rule = [-1, -1, -1, 0, 0, -1]
         # Repeat until the rule is conditional on either the old state, new_state, or action
-        while rule[0] == -1 and rule[1] == -1 and rule[2] == -1:
+        idx = None
+        while True:
+            idx = rng.choice(np.arange(len(examples)))
+            prev_state, new_state, action = examples[idx]
+            # Accept-Reject sampling for old state
             if rng.random() < prob_use_old_state:
-                rule[0] = rng.integers(0, n_states)
+                if prev_state == -1:
+                    continue
+            else:
+                if prev_state != -1:
+                    continue
+            # Accept-Reject sampling for new state
             if rng.random() < prob_use_new_state:
-                rule[1] = rng.integers(0, n_states)
+                if new_state == -1:
+                    continue
+            else:
+                if new_state != -1:
+                    continue
+            # Accept-Reject sampling for action
             if rng.random() < prob_use_action:
-                rule[2] = rng.integers(0, n_actions)
+                if action == -1:
+                    continue
+            else:
+                if action != -1:
+                    continue
+            break
+        rule[:3] = prev_state, new_state, action
+        examples.pop(idx)
         # Decide whether or not to make reward conditional on hidden variable
         if rng.random() < prob_use_flag:
-            rule[5] = 1.0  # rng.choice([1.0, 1.0, 1.0, 0.0])
+            rule[5] = 1.0
         # Reward is always 1, but probability of reward can change
-        rule[3] = 1.0  # rng.choice([.2, .8, 1.0, 1.0])
+        rule[3] = 1.0
         rule[4] = 1.0
         rules.append(rule)
-    # Make sure that two rules with the same old_state don't have the same action
-    # or two rules with the same action don't have the same old state
-    for i in range(len(rules)):
-        for j in range(i+1, len(rules)):
-            if rules[i][0]  == rules[j][0]:  # If rules share the same old state
-                if rules[i][2] == -1 or rules[i][2] == rules[j][2]:  # If there are identical rules, re-run method
-                    return sample_reward_rules(n_states, n_actions, n_rewards, rng, prob_use_old_state, prob_use_new_state, prob_use_action, prob_use_flag)
     return rules
 
 
-def sample_flag_rules(n_states, n_actions, n_flag_rules, rng, prob_use_old_state=1.0, prob_use_new_state=0.0, prob_use_action=0.33):
+def sample_flag_rules(
+    n_states,
+    n_actions,
+    n_flag_rules,
+    rng,
+    prob_use_old_state=1.0,
+    prob_use_new_state=0.0,
+    prob_use_action=0.33,
+):
     # Rules are of the form (old_state, new_state, action, new flag value)
     flagrules = []
     for nr in range(n_flag_rules):

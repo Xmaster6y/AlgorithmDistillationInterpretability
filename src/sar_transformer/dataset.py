@@ -27,7 +27,7 @@ class HistoryDataset(torch.utils.data.Dataset):
         self.dones = []
 
         for file_path in glob.glob(os.path.join(self.history_dir, "*.npz")):
-            data = dict(np.load(file_path))
+            data = dict(np.load(file_path), allow_pickle=True)
             self.states.append(torch.from_numpy(data["observations"]))
             self.actions.append(torch.from_numpy(data["actions"]))
             self.rewards.append(torch.from_numpy(data["rewards"]))

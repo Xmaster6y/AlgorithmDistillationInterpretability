@@ -34,8 +34,8 @@ def get_max_len_from_model_type(model_type: str, n_ctx: int):
         return 1 + n_ctx // 2
 
 
-def evaluate_random_agent(env, n_its=10000):
-    # Simulate random walks    
+def evaluate_random_agent(env, n_its=10_000):
+    # Simulate random walks
     total_reward = []
     for i in range(n_its):
         total_reward.append(0)

@@ -19,9 +19,9 @@ import os
 import torch
 import wandb
 
+
 from src.generation import *
 from src.config import ConfigJsonEncoder
-
 
 class TrajectoryWriter:
     """
@@ -213,7 +213,7 @@ class DictList(dict):
 
 class RecordHistory(BaseCallback):
 
-    def __init__(self, file_name):
+    def __init__(self):
         super().__init__()
         self.rollouts = {
             "observations": [],
@@ -221,7 +221,6 @@ class RecordHistory(BaseCallback):
             "rewards"     : [],
             "dones"       : []
         }
-        self.file_name = file_name
 
     def _on_step(self):
         # Retreive relevant information from locals
@@ -242,20 +241,26 @@ class RecordHistory(BaseCallback):
         self.rollouts["actions"] = np.array(self.rollouts["actions"])
         self.rollouts["rewards"] = np.array(self.rollouts["rewards"])
         self.rollouts["dones"] = np.array(self.rollouts["dones"])
-        # Write to a file
-        np.savez(self.file_name, **self.rollouts)
 
 
 def create_environment_from_id(env_id, n_states, n_actions, max_steps, seed):
-    assert env_id in ["DarkKeyDoor", "DarkRoom", "ArmedBandit"]  # Only supports certain environments
+    assert env_id in ["DarkKeyDoor",
+                      "DarkRoom",
+                      "SimpleDarkRoom",
+                      "SimpleDarkKeyDoor",
+                      "ArmedBandit"]  # Only supports certain environments
 
     if env_id == "DarkKeyDoor":
         env = DarkKeyDoor(n_states, n_actions, max_steps, seed=seed)
     elif env_id == "DarkRoom":
         env = DarkRoom(n_states, n_actions, max_steps, seed=seed)
+    elif env_id == "SimpleDarkRoom":
+        env = SimpleDarkRoom(n_states, n_actions, max_steps, seed=seed)
+    elif env_id == "SimpleDarkKeyDoor":
+        env = SimpleDarkKeyDoor(n_states, n_actions, max_steps, seed=seed)
     elif env_id == "ArmedBandit":
         assert n_states == 1 and max_steps == 1, "--n_states and --max_env_len should be set to 1"  # Armed Bandit only supports single state
-        env = MultiArmedBandit(n_actions, max_steps, seed=seed)
+        env = MultiArmedBandit(n_actions, seed=seed)
 
     return env
 
@@ -263,7 +268,13 @@ def create_environment_from_id(env_id, n_states, n_actions, max_steps, seed):
 def create_vector_environment(env_id, n_envs, n_states, n_actions,  max_steps, seed):
     def create_env():
         # Create DarkKeyDoor environment with fixed seed
-        env = create_environment_from_id(env_id, n_states, n_actions, max_steps, seed)
+        env = create_environment_from_id(
+            env_id=env_id,
+            n_states=n_states,
+            n_actions=n_actions,
+            max_steps=max_steps,
+            seed=seed
+        )
         env = Monitor(env)
         return env
     # Add in a couple other things to assist in training
@@ -275,8 +286,11 @@ def train_policy(venv, file_name, n_steps, buffer_size):
     # Trains a recurrent policy to play env with seed
     # Writes the data to file_name
     model = RecurrentPPO("MlpLstmPolicy", venv, ent_coef=0.01, verbose=1, n_steps=buffer_size, batch_size=buffer_size)
-    record_history = RecordHistory(file_name)
+    record_history = RecordHistory()
     model = model.learn(total_timesteps=n_steps, callback=record_history)
+    data = record_history.rollouts
+    data["env"] = venv.get_attr("env")[0]
+    np.savez(file_name, data)
 
 
 def train_ucb(venv, file_name, n_steps):
@@ -325,8 +339,10 @@ def train_ucb(venv, file_name, n_steps):
     rollouts["actions"] = np.array(rollouts["actions"])[:, None]
     rollouts["rewards"] = np.array(rollouts["rewards"])[:, None]
     rollouts["dones"] = np.array(rollouts["dones"])[:, None]
+    rollouts["env"] = env
     # Write to a file
     np.savez(file_name, **rollouts)
+
 
 def store_transformer_model(path, model, offline_config):
     torch.save(
