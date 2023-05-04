@@ -8,7 +8,7 @@ import networkx as nx
 
 from .utils import *
 from .sampling import *
-
+from dataclasses import dataclass
 
 class GeneralTask(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
@@ -254,7 +254,7 @@ class DarkRoom(GeneralTask):
             n_states, n_actions, 1, 0, n_steps, prob_use_flag=0.0, seed=seed
         )
 
-
+@dataclass
 class DarkKeyDoor(GeneralTask):
     """
     DiGraph with randomly sampled transitions, and a single reward node that
