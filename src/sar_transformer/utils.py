@@ -9,7 +9,7 @@ from src.config import (
     ConfigJsonEncoder
 )
 from src.models.trajectory_transformer import (
-    DecisionTransformer,
+    AlgorithmDistillationTransformer,
     CloneTransformer,
 )
 
@@ -78,8 +78,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-# TODO Support loading Clone Transformers
-def load_decision_transformer(model_path, env=None) -> DecisionTransformer:
+def load_algorithm_distillation_transformer(model_path, env=None) -> AlgorithmDistillationTransformer:
     """ """
 
     model_info = t.load(model_path)
@@ -92,7 +91,7 @@ def load_decision_transformer(model_path, env=None) -> DecisionTransformer:
         **json.loads(model_info["environment_config"])
     )
 
-    model = DecisionTransformer(
+    model = AlgorithmDistillationTransformer(
         environment_config=environment_config,
         transformer_config=transformer_config,
     )
