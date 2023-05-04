@@ -32,26 +32,43 @@ class GeneralTask(gym.Env):
         self.n_rewards = n_rewards
         self.n_flags = n_flags
         self.max_steps = max_steps
-        # create rng
+        self.use_mcmc = use_mcmc
+        self.prob_use_action = prob_use_action
+        self.prob_use_flag = prob_use_flag
         if seed is None:
-            seed = np.random.randint(0, 2000)
+            seed = self.np_random.integers(0, 2000)
+        #  We keep a separate rng from self.np_random that is only used in self.generate() 
         self.rng = np.random.default_rng(seed=seed)
+        self.generate()
+        # Set environment options
+        self.observation_space = gym.spaces.Box(0, 1.0, (n_states,))
+        self.action_space = gym.spaces.Discrete(n_actions)
+        # Set environment render mode
+        assert render_mode is None or render_mode in self.metadata["render_modes"]
+        self.render_mode = render_mode
+    
+    def generate(self):
         # Sample environment properties
-        self.transition = sample_transition_rules(n_states, n_actions, self.rng, use_mcmc=use_mcmc)
-        self.observations = sample_observation_rules(n_states)
+        self.transition = sample_transition_rules(
+            self.n_states, self.n_actions, self.rng, use_mcmc=self.use_mcmc)
+        self.observations = sample_observation_rules(self.n_states)
         self.reward_rules = sample_reward_rules(
-            n_states,
-            n_actions,
-            n_rewards,
+            self.n_states,
+            self.n_actions,
+            self.n_rewards,
             self.rng,
-            prob_use_action=prob_use_action,
-            prob_use_flag=prob_use_flag,
+            prob_use_action=self.prob_use_action,
+            prob_use_flag=self.prob_use_flag,
         )
         # Sample flag rules such that they have no overlap with the reward_rules
         # There must be no two flag and reward rules that share the same old state
         while True:
             self.flag_rules = sample_flag_rules(
-                n_states, n_actions, n_flags, self.rng, prob_use_action=prob_use_action
+                self.n_states,
+                self.n_actions,
+                self.n_flags,
+                self.rng,
+                prob_use_action=self.prob_use_action
             )
             # Resample flag rules if there is a flag rule with the same old state as a reward rule
             repeat = False
@@ -61,12 +78,6 @@ class GeneralTask(gym.Env):
                         repeat = True
             if not repeat:
                 break
-        # Set environment options
-        self.observation_space = gym.spaces.Box(0, 1.0, (n_states,))
-        self.action_space = gym.spaces.Discrete(n_actions)
-        # Set environment render mode
-        assert render_mode is None or render_mode in self.metadata["render_modes"]
-        self.render_mode = render_mode
 
     def _get_obs(self):
         return self.observations[self.current_state]
@@ -78,7 +89,7 @@ class GeneralTask(gym.Env):
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed, options=options)
 
-        self.current_state = np.random.randint(
+        self.current_state = self.np_random.integers(
             0, self.n_states
         )  # Choose new starting position
         self.current_flag = 0  # Reset flag
@@ -94,21 +105,9 @@ class GeneralTask(gym.Env):
         self.prev_action = action
         # Sample the next state from the transition matrix
         t_probs = self.transition[self.current_state, action]
-        next_state = np.random.choice(self.n_states, 1, p=t_probs)[
+        next_state = self.np_random.choice(self.n_states, 1, p=t_probs)[
             0
         ]  # Sample s' from categorical dist T[s, a]
-        # Check to update flag
-        for flag_old_state, flag_next_state, flag_action, flag_value in self.flag_rules[
-            ::-1
-        ]:
-            # Check if the rule meets the desired criteria
-            if flag_old_state == -1 or flag_old_state == self.current_state:
-                if flag_next_state == -1 or flag_next_state == next_state:
-                    if flag_action == -1 or flag_action == action:
-                        # Set the new flag value and break
-                        # Newer rules override older ones so we break when we meet the first rule that applies
-                        self.current_flag = flag_value
-                        break
         # Calculate rewards
         reward = 0
         for (
@@ -123,15 +122,28 @@ class GeneralTask(gym.Env):
                 if reward_next_state == -1 or reward_next_state == next_state:
                     if reward_action == -1 or reward_action == action:
                         if reward_flag == -1 or reward_flag == self.current_flag:
-                            if np.random.random() < reward_prob:
+                            if self.np_random.random() < reward_prob:
                                 reward = reward_value
         # Calculate remaining timesteps and if done
         self.current_state = next_state
+        self.update_flag()
         self.current_step += 1
         done = self.current_step == self.max_steps
         obs = self._get_obs()
         # returns obs, reward, terminated, truncated, info
         return obs, reward, done, False, {}
+
+    def update_flag(self):
+        # Check to update flag
+        for flag_old_state, flag_next_state, flag_action, flag_value in self.flag_rules[::-1]:
+            # Check if the rule meets the desired criteria
+            if flag_old_state == -1 or flag_old_state == self.prev_state:
+                if flag_next_state == -1 or flag_next_state == self.current_state:
+                    if flag_action == -1 or flag_action == self.prev_action:
+                        # Set the new flag value and break
+                        # Newer rules override older ones so we break when we meet the first rule that applies
+                        self.current_flag = flag_value
+                        break
 
     def render(self):
         if self.render_mode == "rgb_array":
@@ -164,7 +176,7 @@ class GeneralTask(gym.Env):
                 node_color_map[reward_node] = "lightgreen"
         for flag_rule in self.flag_rules:
             flag_node = flag_rule[0]
-            if flag_node != -1:
+            if flag_node != -1 and self.current_flag == 0:
                 node_color_map[flag_node] = "salmon"
         node_edge_sizes[self.current_state] = 5
         # Draw image and return image array
@@ -295,7 +307,7 @@ class SimpleDarkKeyDoor(GeneralTask):
 
 class RandomTask(GeneralTask):
     """
-    Random General Task
+    50% Chance of DarkRoom, 50% Chance of DarkKeyDoor
     """
 
     def __init__(self, n_states, n_actions, n_steps, seed=None):
