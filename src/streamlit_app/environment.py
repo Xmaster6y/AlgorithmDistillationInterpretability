@@ -12,26 +12,27 @@ from src.models.trajectory_transformer import (
     CloneTransformer,
 )
 
-from src.decision_transformer.utils import (
-    load_decision_transformer,
+from src.sar_transformer.utils import (
+    load_algorithm_distillation_transformer,
     get_max_len_from_model_type,
 )
 from src.environments.environments import make_env
 from src.utils import pad_tensor
+from src.generation import *
 
 
 @st.cache(allow_output_mutation=True)
 def get_env_and_dt(model_path):
     # we need to one if the env was one hot encoded. Some tech debt here.
     state_dict = t.load(model_path)
+    #env_config = state_dict["environment_config"]
+    #env_config = EnvironmentConfig(**json.loads(env_config))
+    #TODO make this work again based on env_config
+    #env = make_env(env_config, seed=4200, idx=0, run_name="dev")
+    #env = env()
+    env = DarkRoom(12, 2, 12, seed=500)
 
-    env_config = state_dict["environment_config"]
-    env_config = EnvironmentConfig(**json.loads(env_config))
-
-    env = make_env(env_config, seed=4200, idx=0, run_name="dev")
-    env = env()
-
-    dt = load_decision_transformer(model_path, env)
+    dt = load_algorithm_distillation_transformer(model_path, env)
     if not hasattr(dt, "n_ctx"):
         dt.n_ctx = dt.transformer_config.n_ctx
     if not hasattr(dt, "time_embedding_type"):

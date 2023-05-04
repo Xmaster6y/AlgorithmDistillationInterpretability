@@ -21,7 +21,6 @@ from src.streamlit_app.dynamic_analysis_components import (
     render_observation_view,
     show_attention_pattern,
     show_residual_stream_contributions_single,
-    show_rtg_scan,
 )
 from src.streamlit_app.setup import initialize_playground
 from src.streamlit_app.static_analysis_components import (
@@ -40,12 +39,13 @@ register_envs()
 start = time.time()
 
 st.set_page_config(
-    page_title="Decision Transformer Interpretability",
+    page_title="Algorithm Distillation Interpretability",
     page_icon="assets/logofiles/Logo_black.ico",
 )
 
 
 with st.sidebar:
+    
     st.image(
         "assets/logofiles/Logo_transparent.png", use_column_width="always"
     )
@@ -123,12 +123,11 @@ with st.sidebar:
     st.subheader("Analysis Selection")
     static_analyses = st.multiselect(
         "Select Static Analyses",
-        ["RTG Embeddings", "Time Embeddings", "OV Circuit", "QK Circuit"],
+        ["Reward Embeddings", "Time Embeddings", "OV Circuit", "QK Circuit"],
     )
     dynamic_analyses = st.multiselect(
         "Select Dynamic Analyses",
         [
-            "Show RTG Scan",
             "Residual Stream Contributions",
             "Attention Pattern",
             "Observation View",
@@ -144,7 +143,7 @@ with st.sidebar:
 if len(analyses) == 0:
     st.warning("Please select at least one analysis.")
 
-if "RTG Embeddings" in analyses:
+if "reward Embeddings" in analyses:
     show_rtg_embeddings(dt, logit_dir)
 if "Time Embeddings" in analyses:
     show_time_embeddings(dt, logit_dir)
@@ -156,8 +155,7 @@ if "OV Circuit" in analyses:
 if "Ablation" in analyses:
     show_ablation(dt, logit_dir=logit_dir, original_cache=cache)
 
-if "Show RTG Scan" in analyses:
-    show_rtg_scan(dt, logit_dir=logit_dir)
+
 if "Residual Stream Contributions" in analyses:
     show_residual_stream_contributions_single(dt, cache, logit_dir=logit_dir)
 if "Attention Pattern" in analyses:

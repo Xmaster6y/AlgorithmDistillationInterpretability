@@ -12,9 +12,8 @@ from src.config import (
     TransformerModelConfig,
 )
 
-from src.decision_transformer.runner import store_transformer_model
-from src.decision_transformer.offline_dataset import TrajectoryDataset
-from src.decision_transformer.utils import load_decision_transformer
+from src.sar_transformer.runner import store_transformer_model
+from src.sar_transformer.utils import load_decision_transformer
 from src.models.trajectory_transformer import DecisionTransformer
 
 
