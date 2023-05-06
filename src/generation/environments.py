@@ -10,6 +10,7 @@ from .utils import *
 from .sampling import *
 from dataclasses import dataclass
 
+@dataclass
 class GeneralTask(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
@@ -189,7 +190,7 @@ class GeneralTask(gym.Env):
         plt.close(fig)
         return output
 
-
+@dataclass
 class MultiArmedBandit(GeneralTask):
     """
     Environment with n_arms actions, each with a different probability of
@@ -215,7 +216,7 @@ class MultiArmedBandit(GeneralTask):
             self.rng.integers(0, len(self.reward_rules))
             ][3] = 1.0  # Make one of the arms the best
 
-
+@dataclass
 class NavigationBandit(GeneralTask):
     """
     Each state has an action to pull a lever that will yield reward with some
@@ -242,7 +243,7 @@ class NavigationBandit(GeneralTask):
         self.transition[:, 1, :] = 1
         self.transition = self.transition / np.sum(self.transition, axis=2)[:, :, None]
 
-
+@dataclass
 class DarkRoom(GeneralTask):
     """
     DiGraph with randomly sampled transitions, and a single reward node
@@ -267,7 +268,7 @@ class DarkKeyDoor(GeneralTask):
             n_states, n_actions, 1, 1, n_steps, prob_use_flag=1.0, seed=seed
         )
 
-
+@dataclass
 class SimpleDarkRoom(GeneralTask):
     """
     Graph with a single reward node
@@ -292,7 +293,7 @@ class SimpleDarkKeyDoor(GeneralTask):
             n_states, n_actions, 1, 1, n_steps, prob_use_flag=1.0, seed=seed, use_mcmc=False
         )
 
-
+@dataclass
 class RandomTask(GeneralTask):
     """
     Random General Task
