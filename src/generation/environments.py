@@ -94,7 +94,7 @@ class GeneralTask(gym.Env):
         )  # Choose new starting position
         self.current_flag = 0  # Reset flag
         self.current_step = 0
-        self.prev_state = None
+        self.prev_state = self.current_state
         self.prev_action = None
 
         return self._get_obs(), {}
@@ -124,6 +124,7 @@ class GeneralTask(gym.Env):
                         if reward_flag == -1 or reward_flag == self.current_flag:
                             if self.np_random.random() < reward_prob:
                                 reward = reward_value
+                            break
         # Calculate remaining timesteps and if done
         self.current_state = next_state
         self.update_flag()
@@ -159,16 +160,16 @@ class GeneralTask(gym.Env):
             node_color_map.append("lightblue")
             node_edge_sizes.append(0)
         # Add edges to graph
-        edge_colors = []
         for ls in range(self.transition.shape[0]):
             for la in range(self.transition.shape[1]):
                 for ns in range(self.transition.shape[2]):
                     if self.transition[ls, la, ns] > 0:
                         if ls == self.prev_state and la == self.prev_action:
-                            edge_colors.append("darkgoldenrod")
+                            color = "darkgoldenrod"
                         else:
-                            edge_colors.append("black")
-                        graph.add_edge(ls, ns)
+                            color = "black"
+                        graph.add_edge(ls, ns, color=color)
+        edge_colors = [graph[u][v]['color'] for u, v in graph.edges()]
         # Label current state, reward states, and flag states
         for reward_rule in self.reward_rules:
             reward_node = reward_rule[0]
@@ -315,3 +316,102 @@ class RandomTask(GeneralTask):
         super().__init__(
             n_states, n_actions, 1, 1, n_steps, prob_use_flag=0.5, seed=seed
         )
+
+
+class MetaRLTask(GeneralTask):
+    """
+    Repeats the same task n_task times
+    """
+
+    def __init__(
+        self,
+        n_states,
+        n_actions,
+        n_rewards,
+        n_flags,
+        max_steps,
+        n_trials,
+        render_mode="rgb_array",
+        seed=None,
+        use_mcmc=True,
+        prob_use_action=0.33,
+        prob_use_flag=0.33,
+    ):
+        super().__init__(
+            n_states,
+            n_actions,
+            n_rewards,
+            n_flags,
+            max_steps,
+            render_mode,
+            seed,
+            use_mcmc,
+            prob_use_action,
+            prob_use_flag,
+        )
+
+        self.observation_space = gym.spaces.Box(0, 1.0, (n_states+n_actions+2,))
+        self.n_trials = n_trials
+
+    @property
+    def steps_remaining(self):
+        return self.n_trials * self.max_steps - self.current_step
+
+    def _get_obs(self):
+        extra_space = np.zeros(self.n_actions + 2)
+        return np.concatenate((
+            self.observations[self.current_state],
+            extra_space
+        ), axis=0)
+
+    def reset(self, *args, **kwargs):
+        self.generate()
+        self.current_trial = 0
+        return super().reset(*args, **kwargs)
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = super().step(action)
+        if terminated:
+            self.current_trial += 1
+            obs, _ = super().reset()
+            obs[-1] = 1.0  # Set done
+        if self.current_trial == self.n_trials:
+            terminated = True
+        else:
+            terminated = False
+        # Observations includes previous reward and action
+        obs[self.n_states + action] = 1.0
+        obs[-2] = reward
+        return obs, reward, terminated, truncated, info
+
+
+class MetaRLArmedBandit(MetaRLTask):
+    """
+    Environment with n_arms actions, each with a different probability of
+    yielding reward.  Probabilities are sampled from Beta distribution.
+    """
+
+    def __init__(self, n_arms, n_trials, seed=None,):
+        super().__init__(
+            n_states=1,
+            n_actions=n_arms,
+            n_rewards=n_arms,
+            n_flags=0,
+            max_steps=1,
+            n_trials=n_trials,
+            render_mode="rgb_array",
+            seed=seed,
+            use_mcmc=False,
+            prob_use_action=1.0,
+            prob_use_flag=0.0,
+        )
+
+    def generate(self):
+        super().generate()
+        # We need to reinit probs for the rewards
+        for reward_rule in self.reward_rules:
+            reward_rule[3] = self.rng.beta(1, 5)
+            reward_rule[4] = 0.05
+        self.reward_rules[
+            self.rng.integers(0, len(self.reward_rules))
+            ][3] = 1.0  # Make one of the arms the best
