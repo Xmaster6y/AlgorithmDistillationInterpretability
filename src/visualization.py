@@ -50,7 +50,6 @@ def render_minigrid_observations(env, observations):
 
 
 def render_video_from_policy(model, video_file_name):
-    # Generate video
     env = model.get_env()
 
     obs = env.reset()
@@ -60,21 +59,18 @@ def render_video_from_policy(model, video_file_name):
 
     fourc = cv2.VideoWriter_fourcc(*'avc1')
     x, y, _ = env.render().shape
-    video = cv2.VideoWriter(f'{video_file_name}.mp4', fourc, 5.0, (x, y))
+    video = cv2.VideoWriter(f'{video_file_name}.mp4', fourc, 2.0, (x, y))
+    done = np.zeros((n_episodes,), dtype=bool)
 
-    for i in range(25):
+    while not np.all(done):
         # Write to video
         render = env.render()
+        render = cv2.cvtColor(render, cv2.COLOR_BGR2RGB)
         video.write(render)
         # Step    
-        action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
+        action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=False)
         obs, reward, done, info = env.step(action)
         episode_starts = done
-        # Finish if done
-        if np.all(done):
-            print(i)
-            print("Early break")
-            break
 
     video.release()
 
@@ -96,7 +92,8 @@ def visualize_learning_history(file_name, video_file_name, every_n_eps=40):
     for ep in range(0, total_eps, every_n_eps):
         start_idx = ep * ep_len
         end_idx = start_idx + ep_len
-        # Initialize counters 
+        # Initialize counters
+        _ = env.reset()
         prev_state = -1
         prev_action = -1
         current_state = np.argmax(states[start_idx, :])
@@ -105,7 +102,9 @@ def visualize_learning_history(file_name, video_file_name, every_n_eps=40):
             env.current_state = current_state
             env.prev_state = prev_state
             env.prev_action = prev_action
+            env.update_flag()
             render = env.render()
+            render = cv2.cvtColor(render, cv2.COLOR_BGR2RGB)  # cv2 reads in images as BGR by default
             video.write(render)
             # Step
             prev_state = current_state

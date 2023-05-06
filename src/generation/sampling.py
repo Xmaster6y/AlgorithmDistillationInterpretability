@@ -33,12 +33,10 @@ def sample_transition_rules(n_states, n_actions, rng, use_mcmc=True):
     return T
 
 
-def markov_chain_monte_carlo(T, rng, n_its=100_000):
+def markov_chain_monte_carlo(T, rng, n_its=25_000):
     # Performs Markov Chain Monte Carlo to sample a random strongly-connected graph
     n_states, n_actions, _ = T.shape
-    for i in range(
-        n_its
-    ):  # Not possible to calculate in general what the mixing time is here
+    for i in range(n_its):  # Not possible to calculate in general what the mixing time is here
         rand_prev_state = rng.integers(0, n_states)
         rand_next_state = rng.integers(0, n_states)
         rand_act = rng.integers(0, n_actions)
