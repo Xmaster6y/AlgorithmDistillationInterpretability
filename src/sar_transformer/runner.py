@@ -87,7 +87,7 @@ def run_decision_transformer(
     environment_config,
     lr=3e-4,
     clip=1.,
-    device="cuda",
+    device=offline_config.device,
     track=offline_config.track,
     train_epochs=offline_config.train_epochs,
     eval_frequency=offline_config.eval_frequency,
@@ -113,7 +113,6 @@ def run_decision_transformer(
         artifact.add_file(model_path)
         wandb.log_artifact(artifact)
         os.remove(model_path)
-
         wandb.finish()
 
 
