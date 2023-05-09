@@ -64,24 +64,20 @@ with st.sidebar:
         if submitted:
             reset_env_dt()
 
-initial_rtg = hyperpar_side_bar()
+hyperpar_side_bar()
 
 
-action_string_to_id = {
-    "left": 0,
-    "right": 1,
-    "forward": 2,
-    "pickup": 3,
-    "drop": 4,
-    "toggle": 5,
-    "done": 6,
-}
-action_id_to_string = {v: k for k, v in action_string_to_id.items()}
+
 
 # st.session_state.max_len = 1
-env, dt = initialize_playground(selected_model_path, initial_rtg)
+env, dt = initialize_playground(selected_model_path)
 x, cache, tokens = render_game_screen(dt, env)
+
+action_options = [f"Action {i}" for i in range(1, env.action_space.n + 1)]#TODO maybe needs a done option
+action_string_to_id = {element: index for index, element in enumerate(action_options)}
+action_id_to_string = {v: k for k, v in action_string_to_id.items()}
 record_keypresses()
+
 
 with st.sidebar:
     st.subheader("Directional Analysis")
@@ -89,12 +85,12 @@ with st.sidebar:
     if comparing:
         positive_action_direction = st.selectbox(
             "Positive Action Direction",
-            ["left", "right", "forward", "pickup", "drop", "toggle", "done"],
-            index=2,
+            action_options,
+            index=0,
         )
         negative_action_direction = st.selectbox(
             "Negative Action Direction",
-            ["left", "right", "forward", "pickup", "drop", "toggle", "done"],
+            action_options,
             index=1,
         )
         positive_action_direction = action_string_to_id[
@@ -112,7 +108,7 @@ with st.sidebar:
         st.warning("Single Logit Analysis may be misleading.")
         selected_action_direction = st.selectbox(
             "Selected Action Direction",
-            ["left", "right", "forward", "pickup", "drop", "toggle", "done"],
+            action_options,
             index=2,
         )
         selected_action_direction = action_string_to_id[
