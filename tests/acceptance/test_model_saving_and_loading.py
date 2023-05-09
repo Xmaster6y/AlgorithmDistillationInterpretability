@@ -101,7 +101,6 @@ def offline_config() -> OfflineTrainConfig:
         batch_size=128,
         lr=0.0001,
         weight_decay=0.0,
-        pct_traj=1.0,
         prob_go_from_end=0.0,
         device="cpu",
         track=False,
