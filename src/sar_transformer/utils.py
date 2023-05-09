@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument("--d_model", type=int, default=128)
     parser.add_argument("--trajectory_path", type=str)
     parser.add_argument("--n_heads", type=int, default=4)
-    parser.add_argument("--d_mlp", type=int, default=256)
+    parser.add_argument("--d_mlp", type=int, default=1024)
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--n_episodes_per_seq", type=int, default=10)
     parser.add_argument("--layer_norm", type=bool, default=False)
