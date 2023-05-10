@@ -65,7 +65,7 @@ def get_residual_decomp(
                 decomp[component] = state_dict[component] @ logit_dir
 
     for k in decomp:
-        decomp[k] = decomp[k].detach().numpy()
+        decomp[k] = decomp[k].detach().cpu().numpy()
 
     if nice_names:
         decomp = get_nice_names(decomp)
