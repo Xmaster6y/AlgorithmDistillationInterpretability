@@ -94,8 +94,6 @@ python -m src.run_decision_transformer \
     --batch_size 128 \
     --train_epochs 5000 \
     --test_epochs 10 \
-    --n_ctx 3 \
-    --pct_traj 1 \
     --weight_decay 0.001 \
     --seed 1 \
     --wandb_project_name DecisionTransformerInterpretability-Dev \
@@ -106,7 +104,7 @@ python -m src.run_decision_transformer \
     --initial_rtg 0 \
     --initial_rtg 1 \
     --prob_go_from_end 0.1 \
-    --track True
+    --track 
 
 ```
 
