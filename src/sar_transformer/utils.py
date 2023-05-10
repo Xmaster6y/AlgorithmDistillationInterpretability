@@ -27,25 +27,25 @@ def parse_args():
     parser.add_argument("--d_mlp", type=int, default=256)
     parser.add_argument("--n_layers", type=int, default=2)
     parser.add_argument("--n_ctx", type=int, default=3)
-    parser.add_argument("--layer_norm", type=bool, default=False)
+    parser.add_argument("--layer_norm",  default=False)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--train_epochs", type=int, default=10)
     parser.add_argument("--test_epochs", type=int, default=3)
     parser.add_argument("--learning_rate", type=float, default=0.0001)
     parser.add_argument(
         "--linear_time_embedding",
-        type=bool,
+        
         default=False,
-        action=argparse.BooleanOptionalAction,
+        action="store_true",
     )
     parser.add_argument("--pct_traj", type=float, default=1)
     parser.add_argument("--weight_decay", type=float, default=0.001)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument(
         "--track",
-        type=bool,
+        
         default=False,
-        action=argparse.BooleanOptionalAction,
+        action="store_true",
     )
     parser.add_argument(
         "--wandb_project_name",
@@ -65,15 +65,15 @@ def parse_args():
         default=[0, 1],
     )
     parser.add_argument("--prob_go_from_end", type=float, default=0.1)
-    parser.add_argument("--cuda", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--cuda", action="store_true")
     parser.add_argument(
         "--model_type", type=str, default="algorithm_distillation"
     )
     parser.add_argument(
         "--convert_to_one_hot",
-        type=bool,
+        
         default=False,
-        action=argparse.BooleanOptionalAction,
+        action="store_true",
     )
     args = parser.parse_args()
     return args

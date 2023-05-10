@@ -1,5 +1,6 @@
 import dataclasses
 import gzip
+import heapq
 import json
 import lzma
 import os
@@ -361,3 +362,75 @@ def store_transformer_model(path, model, offline_config):
         path,
     )
 
+
+def train_tabular_q(
+        env,
+        n_episodes=10,
+        alpha=1e-2, 
+        gamma=0.99, 
+        epsilon=0.0,
+        epsilon_decay=0.5,
+        epsilon_min=0.0,
+        theta=1e-4,
+        n_planning_steps=1_000
+    ):
+    # Model based q-learning with prioritized sweeping
+    n_states = env.n_states
+    n_actions = env.n_actions
+    q_values = np.ones((n_states, n_actions))  # Initializing to one encourages much faster exploration
+    model = {}
+    ep_rewards = []
+    priority_queue = []
+    seen_state_action_pairs = set()
+
+    for episode in range(n_episodes):
+
+        obs, _ = env.reset(seed=episode)
+        state = np.argmax(obs)
+        done = False
+        total_reward = 0
+
+        while not done:
+            # Compute next environment step
+            if np.random.random() < epsilon:
+                action = env.action_space.sample()
+            else:
+                action = np.argmax(q_values[state])
+            seen_state_action_pairs.add((state, action))
+            obs, reward, done, _, _ = env.step(action)
+            next_state = np.argmax(obs)
+
+            # Update the model
+            if state not in model:
+                model[state] = {}
+            model[state][action] = (reward, next_state)
+            
+            # Calculate priority and update queue
+            max_q_next = np.max(q_values[next_state]) if not done else 0
+            priority = np.abs(reward + gamma * max_q_next - q_values[state, action])
+            if priority > theta:
+                heapq.heappush(priority_queue, (-priority, state, action))
+                
+            # Planning loop
+            for i in range(n_planning_steps):
+                if len(priority_queue) == 0:
+                    break
+                _, s, a = heapq.heappop(priority_queue)
+                r, ns = model[s][a]
+                q_values[s, a] += alpha * (r + gamma * np.max(q_values[ns]) - q_values[s][a])
+                for s_prime, a_prime in seen_state_action_pairs:
+                    r_prime, ns_prime = model[s_prime][a_prime]
+                    if ns_prime != s:
+                        continue
+                    max_q_ns_prime = np.max(q_values[ns_prime])
+                    priority_prime = np.abs(r_prime + gamma * max_q_ns_prime - q_values[s_prime][a_prime])
+                    if priority_prime > theta:
+                        heapq.heappush(priority_queue, (-priority_prime, s_prime, a_prime))
+
+            state = next_state
+            total_reward += reward
+
+        ep_rewards.append(total_reward)
+        epsilon = max(epsilon_min, epsilon * epsilon_decay)
+
+    return ep_rewards

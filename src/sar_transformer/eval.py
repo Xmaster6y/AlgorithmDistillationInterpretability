@@ -72,6 +72,7 @@ def evaluate_ad_agent(
     assert max_len % episode_length == 0  # This should be the case, or else the model and env are mismatched
     n_prev_episodes = max_len // episode_length
     env = env_config.env
+    env.generate()
     n_obs = env.observation_space.shape[0]
     
     # Measure baseline scores
@@ -110,8 +111,9 @@ def evaluate_ad_agent(
         )
         idx = min(max_len - 1, total_steps)
         act_probs = torch.softmax(action_preds[0, idx] / temp, dim=-1).detach().cpu().numpy()
-        act = np.random.choice(np.arange(act_probs.shape[0]), p=act_probs)
-        
+        # act = np.random.choice(np.arange(act_probs.shape[0]), p=act_probs)
+        act = act_probs.argmax(-1)  # Greedy sampling instead
+         
         # Environment step
         obs, reward, done, _, info = env.step(act)
         total_steps += 1

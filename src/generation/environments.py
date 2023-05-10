@@ -221,6 +221,9 @@ class MultiArmedBandit(GeneralTask):
             seed=seed,
             use_mcmc=False
         )
+
+    def generate(self):
+        super().generate()
         # We need to reinit probs for the rewards
         for reward_rule in self.reward_rules:
             reward_rule[3] = self.rng.beta(1, 5)
@@ -247,6 +250,9 @@ class NavigationBandit(GeneralTask):
             seed=seed,
             use_mcmc=False
         )
+
+    def generate(self):
+        super().generate()
         # We need to reinit probs for the rewards
         for reward_rule in self.reward_rules:
             reward_rule[3] = self.rng.random()

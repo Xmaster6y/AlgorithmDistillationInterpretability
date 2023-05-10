@@ -10,14 +10,12 @@ class HistoryDataset(torch.utils.data.Dataset):
     
     def __init__(self,
                  history_dir,
-                 episode_length=12,
                  n_episodes_per_seq=10):
 
         self.history_dir = history_dir
-        self.episode_length = episode_length
         self.n_episodes_per_seq = n_episodes_per_seq
         self.load_histories()
-        self.upper_bound = (self.n_episodes - self.n_episodes_per_seq) * self.episode_length
+        self.upper_bound = (self.n_episodes - self.n_episodes_per_seq + 1) * self.episode_length
         self.size = self.n_histories * self.upper_bound
 
     def load_histories(self,):
@@ -27,11 +25,17 @@ class HistoryDataset(torch.utils.data.Dataset):
         self.dones = []
 
         for file_path in glob.glob(os.path.join(self.history_dir, "*.npz")):
-            data = dict(np.load(file_path), allow_pickle=True)
+            
+            data = dict(np.load(file_path, allow_pickle=True))
             self.states.append(torch.from_numpy(data["observations"]))
             self.actions.append(torch.from_numpy(data["actions"]))
             self.rewards.append(torch.from_numpy(data["rewards"]))
             self.dones.append(torch.from_numpy(data["dones"]))
+            
+            env = data["env"].item()
+            self.n_states = env.n_states
+            self.n_actions = env.n_actions
+            self.episode_length = env.max_steps
 
         self.states = torch.stack(self.states, dim=0)
         self.actions = torch.stack(self.actions, dim=0)
