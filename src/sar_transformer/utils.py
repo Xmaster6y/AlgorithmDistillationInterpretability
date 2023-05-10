@@ -20,7 +20,7 @@ def parse_args():
         description="Train a algorithm distillation transformer on training histories",
         epilog="The last enemy that shall be defeated is death.",
     )
-    parser.add_argument("--exp_name", type=str, default="Dev")
+    parser.add_argument("--exp_name", type=sWtr, default="Dev")
     parser.add_argument("--d_model", type=int, default=128)
     parser.add_argument("--trajectory_path", type=str)
     parser.add_argument("--n_heads", type=int, default=4)
@@ -34,17 +34,17 @@ def parse_args():
     parser.add_argument("--learning_rate", type=float, default=0.0001)
     parser.add_argument(
         "--linear_time_embedding",
-        type=bool,
+        
         default=False,
-        action=argparse.BooleanOptionalAction,
+        action="store_true",
     )
     parser.add_argument("--weight_decay", type=float, default=0.001)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument(
         "--track",
-        type=bool,
+        
         default=False,
-        action=argparse.BooleanOptionalAction,
+        action="store_true",
     )
     parser.add_argument(
         "--wandb_project_name",
@@ -64,15 +64,15 @@ def parse_args():
         default=[0, 1],
     )
     parser.add_argument("--prob_go_from_end", type=float, default=0.1)
-    parser.add_argument("--cuda", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--cuda", action="store_true")
     parser.add_argument(
         "--model_type", type=str, default="algorithm_distillation"
     )
     parser.add_argument(
         "--convert_to_one_hot",
-        type=bool,
+        
         default=False,
-        action=argparse.BooleanOptionalAction,
+        action="store_true",
     )
     args = parser.parse_args()
     return args

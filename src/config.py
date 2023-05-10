@@ -81,6 +81,7 @@ class TransformerModelConfig:
     n_layers: int = 2
     n_ctx: int = 2
     layer_norm: bool = False
+    attn_only: bool = False
     state_embedding_type: str = "grid"
     time_embedding_type: str = "embedding"
     seed: int = 1

@@ -215,8 +215,9 @@ class TrajectoryTransformer(nn.Module):
             d_model=self.transformer_config.d_model,
             d_head=self.transformer_config.d_head,
             n_heads=self.transformer_config.n_heads,
-            d_mlp=self.transformer_config.d_mlp,
+            d_mlp=self.transformer_config.d_mlp if not self.transformer_config.attn_only else None,
             d_vocab=self.transformer_config.d_model,
+            attn_only=self.transformer_config.attn_only,
             # 3x the max timestep so we have room for an action, reward, and state per timestep
             n_ctx=self.transformer_config.n_ctx,
             act_fn="relu",
