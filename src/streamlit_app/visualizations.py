@@ -22,7 +22,7 @@ action_id_to_string = {v: k for k, v in action_string_to_id.items()}
 def plot_action_preds(action_preds):
     # make bar chart of action_preds
     action_preds = action_preds[-1][-1]
-    action_preds = action_preds.detach().numpy()
+    action_preds = action_preds.detach().cpu().numpy()
     # softmax
     action_preds = np.exp(action_preds) / np.sum(np.exp(action_preds), axis=0)
 

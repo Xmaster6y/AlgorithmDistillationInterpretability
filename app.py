@@ -21,7 +21,6 @@ from src.streamlit_app.dynamic_analysis_components import (
     render_observation_view,
     show_attention_pattern,
     show_residual_stream_contributions_single,
-    show_rtg_scan,
 )
 from src.streamlit_app.setup import initialize_playground
 from src.streamlit_app.static_analysis_components import (
@@ -40,12 +39,13 @@ register_envs()
 start = time.time()
 
 st.set_page_config(
-    page_title="Decision Transformer Interpretability",
+    page_title="Algorithm Distillation Interpretability",
     page_icon="assets/logofiles/Logo_black.ico",
 )
 
 
 with st.sidebar:
+    
     st.image(
         "assets/logofiles/Logo_transparent.png", use_column_width="always"
     )
@@ -64,24 +64,20 @@ with st.sidebar:
         if submitted:
             reset_env_dt()
 
-initial_rtg = hyperpar_side_bar()
+hyperpar_side_bar()
 
 
-action_string_to_id = {
-    "left": 0,
-    "right": 1,
-    "forward": 2,
-    "pickup": 3,
-    "drop": 4,
-    "toggle": 5,
-    "done": 6,
-}
-action_id_to_string = {v: k for k, v in action_string_to_id.items()}
+
 
 # st.session_state.max_len = 1
-env, dt = initialize_playground(selected_model_path, initial_rtg)
+env, dt = initialize_playground(selected_model_path)
 x, cache, tokens = render_game_screen(dt, env)
+
+action_options = [f"Action {i}" for i in range(1, env.action_space.n + 1)]#TODO maybe needs a done option
+action_string_to_id = {element: index for index, element in enumerate(action_options)}
+action_id_to_string = {v: k for k, v in action_string_to_id.items()}
 record_keypresses()
+
 
 with st.sidebar:
     st.subheader("Directional Analysis")
@@ -89,12 +85,12 @@ with st.sidebar:
     if comparing:
         positive_action_direction = st.selectbox(
             "Positive Action Direction",
-            ["left", "right", "forward", "pickup", "drop", "toggle", "done"],
-            index=2,
+            action_options,
+            index=0,
         )
         negative_action_direction = st.selectbox(
             "Negative Action Direction",
-            ["left", "right", "forward", "pickup", "drop", "toggle", "done"],
+            action_options,
             index=1,
         )
         positive_action_direction = action_string_to_id[
@@ -112,7 +108,7 @@ with st.sidebar:
         st.warning("Single Logit Analysis may be misleading.")
         selected_action_direction = st.selectbox(
             "Selected Action Direction",
-            ["left", "right", "forward", "pickup", "drop", "toggle", "done"],
+            action_options,
             index=2,
         )
         selected_action_direction = action_string_to_id[
@@ -123,12 +119,11 @@ with st.sidebar:
     st.subheader("Analysis Selection")
     static_analyses = st.multiselect(
         "Select Static Analyses",
-        ["RTG Embeddings", "Time Embeddings", "OV Circuit", "QK Circuit"],
+        ["Reward Embeddings", "Time Embeddings", "OV Circuit", "QK Circuit"],
     )
     dynamic_analyses = st.multiselect(
         "Select Dynamic Analyses",
         [
-            "Show RTG Scan",
             "Residual Stream Contributions",
             "Attention Pattern",
             "Observation View",
@@ -144,7 +139,7 @@ with st.sidebar:
 if len(analyses) == 0:
     st.warning("Please select at least one analysis.")
 
-if "RTG Embeddings" in analyses:
+if "reward Embeddings" in analyses:
     show_rtg_embeddings(dt, logit_dir)
 if "Time Embeddings" in analyses:
     show_time_embeddings(dt, logit_dir)
@@ -156,8 +151,7 @@ if "OV Circuit" in analyses:
 if "Ablation" in analyses:
     show_ablation(dt, logit_dir=logit_dir, original_cache=cache)
 
-if "Show RTG Scan" in analyses:
-    show_rtg_scan(dt, logit_dir=logit_dir)
+
 if "Residual Stream Contributions" in analyses:
     show_residual_stream_contributions_single(dt, cache, logit_dir=logit_dir)
 if "Attention Pattern" in analyses:

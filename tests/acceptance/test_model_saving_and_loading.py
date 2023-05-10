@@ -12,9 +12,8 @@ from src.config import (
     TransformerModelConfig,
 )
 
-from src.decision_transformer.runner import store_transformer_model
-from src.decision_transformer.offline_dataset import TrajectoryDataset
-from src.decision_transformer.utils import load_decision_transformer
+from src.sar_transformer.runner import store_transformer_model
+from src.sar_transformer.utils import load_decision_transformer
 from src.models.trajectory_transformer import DecisionTransformer
 
 
@@ -102,7 +101,6 @@ def offline_config() -> OfflineTrainConfig:
         batch_size=128,
         lr=0.0001,
         weight_decay=0.0,
-        pct_traj=1.0,
         prob_go_from_end=0.0,
         device="cpu",
         track=False,

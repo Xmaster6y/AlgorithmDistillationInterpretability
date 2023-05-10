@@ -15,6 +15,7 @@ from minigrid.wrappers import (
     OneHotPartialObsWrapper,
     RGBImgPartialObsWrapper,
 )
+from src.generation.environments import DarkKeyDoor
 
 # from .environments.wrappers import ViewSizeWrapper
 
@@ -42,8 +43,12 @@ class EnvironmentConfig:
     device: str = "cpu"
 
     def __post_init__(self):
-        if self.env is None:
-            self.env = gym.make(self.env_id)
+        if isinstance(self.env, dict):
+            if self.env_id.startswith("Graph"):
+                #self.env = DarkKeyDoor(self.observation_space,self.action_space.n,)#TODO fix for all envs.
+                self.env = DarkKeyDoor(12,2,self.max_steps)
+            else:
+                self.env = gym.make(self.env_id)
 
         if self.env_id.startswith("MiniGrid"):
             if self.fully_observed:
@@ -52,16 +57,13 @@ class EnvironmentConfig:
                 self.env = OneHotPartialObsWrapper(self.env)
             elif self.img_obs:
                 self.env = RGBImgPartialObsWrapper(self.env)
-
-            if self.view_size != 7:
-                self.env = ViewSizeWrapper(self.env, self.view_size)
         elif self.env_id.startswith("Graph"):
             self.max_steps = self.env.max_steps
-
-        self.action_space = self.action_space or self.env.action_space
-        self.observation_space = (
+            self.observation_space = (
             self.observation_space or self.env.observation_space
-        )
+            )
+            self.action_space = self.action_space or self.env.action_space    
+            
         if isinstance(self.device, str):
             self.device = torch.device(self.device)
     
@@ -152,7 +154,7 @@ class OfflineTrainConfig:
     batch_size: int = 128
     lr: float = 0.0001
     weight_decay: float = 0.0
-    pct_traj: float = 1.0
+    n_episodes_per_seq: int =10
     prob_go_from_end: float = 0.0
     device: str = "cpu"
     track: bool = False

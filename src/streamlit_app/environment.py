@@ -12,26 +12,28 @@ from src.models.trajectory_transformer import (
     CloneTransformer,
 )
 
-from src.decision_transformer.utils import (
-    load_decision_transformer,
+from src.sar_transformer.utils import (
+    load_algorithm_distillation_transformer,
     get_max_len_from_model_type,
 )
 from src.environments.environments import make_env
 from src.utils import pad_tensor
+from src.generation import *
 
 
 @st.cache(allow_output_mutation=True)
 def get_env_and_dt(model_path):
     # we need to one if the env was one hot encoded. Some tech debt here.
     state_dict = t.load(model_path)
+    #env_config = state_dict["environment_config"]
+    #env_config = EnvironmentConfig(**json.loads(env_config))
+    #TODO make this work again based on env_config
+    #env = make_env(env_config, seed=4200, idx=0, run_name="dev")
+    #env = env()
+    env = DarkRoom(12, 2, 12, seed=500)
 
-    env_config = state_dict["environment_config"]
-    env_config = EnvironmentConfig(**json.loads(env_config))
-
-    env = make_env(env_config, seed=4200, idx=0, run_name="dev")
-    env = env()
-
-    dt = load_decision_transformer(model_path, env)
+    dt = load_algorithm_distillation_transformer(model_path, env)
+    dt = dt.to(dt.transformer_config.device)#TODO make this unecesary by moving into the load 
     if not hasattr(dt, "n_ctx"):
         dt.n_ctx = dt.transformer_config.n_ctx
     if not hasattr(dt, "time_embedding_type"):
@@ -56,7 +58,7 @@ def get_action_preds(dt):
 
     obs = st.session_state.obs
     actions = st.session_state.a
-    rtg = st.session_state.rtg
+    reward = st.session_state.reward
 
     # truncations:
     obs = obs[:, -max_len:] if obs.shape[1] > max_len else obs
@@ -69,23 +71,30 @@ def get_action_preds(dt):
     timesteps = (
         timesteps[:, -max_len:] if timesteps.shape[1] > max_len else timesteps
     )
-    rtg = rtg[:, -max_len:] if rtg.shape[1] > max_len else rtg
+    reward = (
+            reward[:, -(obs.shape[1] - 1) :]
+            if (reward.shape[1] > 1 and max_len > 1)
+            else None
+        )
+    obs=obs.to(dt.transformer_config.device)
+    reward=reward.to(dt.transformer_config.device)
+    actions=actions.to(dt.transformer_config.device)
+    timesteps=timesteps.to(dt.transformer_config.device)
 
     if dt.time_embedding_type == "linear":
         timesteps = timesteps.to(dtype=t.float32)
     else:
         timesteps = timesteps.to(dtype=t.long)
-
-    tokens = dt.to_tokens(obs, actions, rtg, timesteps)
+    tokens = dt.to_tokens(obs, actions, reward, timesteps)
     x, cache = dt.transformer.run_with_cache(tokens, remove_batch_dim=False)
-
+    
     state_preds, action_preds, reward_preds = dt.get_logits(
         x, batch_size=1, seq_length=obs.shape[1], no_actions=actions is None
     )
     return action_preds, x, cache, tokens
 
 
-def respond_to_action(env, action, initial_rtg):
+def respond_to_action(env, action):
     new_obs, reward, done, trunc, info = env.step(action)
     if done:
         st.error(
@@ -95,7 +104,7 @@ def respond_to_action(env, action, initial_rtg):
     st.session_state.obs = t.cat(
         [
             st.session_state.obs,
-            t.tensor(new_obs["image"]).unsqueeze(0).unsqueeze(0),
+            t.tensor(new_obs).unsqueeze(0).unsqueeze(0),
         ],
         dim=1,
     )
@@ -124,12 +133,6 @@ def respond_to_action(env, action, initial_rtg):
         dim=1,
     )
 
-    rtg = initial_rtg - st.session_state.reward.sum()
-
-    st.session_state.rtg = t.cat(
-        [st.session_state.rtg, t.tensor([rtg]).unsqueeze(0).unsqueeze(0)],
-        dim=1,
-    )
     time = st.session_state.timesteps[-1][-1] + 1
     st.session_state.timesteps = t.cat(
         [
@@ -140,43 +143,21 @@ def respond_to_action(env, action, initial_rtg):
     )
 
 
-def get_action_from_user(env, initial_rtg):
+def get_action_from_user(env):
     # create a series of buttons for each action
-    button_columns = st.columns(7)
-    with button_columns[0]:
-        left_button = st.button("Left", key="left_button")
-    with button_columns[1]:
-        right_button = st.button("Right", key="right_button")
-    with button_columns[2]:
-        forward_button = st.button("Forward", key="forward_button")
-    with button_columns[3]:
-        pickup_button = st.button("Pickup", key="pickup_button")
-    with button_columns[4]:
-        drop_button = st.button("Drop", key="drop_button")
-    with button_columns[5]:
-        toggle_button = st.button("Toggle", key="toggle_button")
-    with button_columns[6]:
-        done_button = st.button("Done", key="done_button")
-
-    # if any of the buttons are pressed, take the corresponding action
-    if left_button:
-        action = 0
-        respond_to_action(env, action, initial_rtg)
-    elif right_button:
-        action = 1
-        respond_to_action(env, action, initial_rtg)
-    elif forward_button:
-        action = 2
-        respond_to_action(env, action, initial_rtg)
-    elif pickup_button:
-        action = 3
-        respond_to_action(env, action, initial_rtg)
-    elif drop_button:
-        action = 4
-        respond_to_action(env, action, initial_rtg)
-    elif toggle_button:
-        action = 5
-        respond_to_action(env, action, initial_rtg)
-    elif done_button:
-        action = 6
-        respond_to_action(env, action, initial_rtg)
+    num_actions=int(env.action_space.n)
+    button_labels = [f"Action {i}" for i in range(num_actions)]
+    # Create a list to store the button objects
+    buttons = []
+    # Create the buttons and add them to the list
+    button_columns = st.columns(num_actions)
+    for i in range(num_actions):
+        with button_columns[i]:
+            button = st.button(button_labels[i], key=f"button_{i}")
+            buttons.append(button)
+    # Check if any button is pressed and take the corresponding action
+    for i, button in enumerate(buttons):
+        if button:
+            action = i
+            respond_to_action(env, action)
+            break
