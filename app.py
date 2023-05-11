@@ -15,7 +15,7 @@ from src.streamlit_app.components import (
 from src.streamlit_app.content import (
     analysis_help,
     help_page,
-    reference_tables,
+
 )
 from src.streamlit_app.dynamic_analysis_components import (
     render_observation_view,
@@ -202,4 +202,3 @@ record_keypresses()
 
 help_page()
 analysis_help()
-reference_tables()
