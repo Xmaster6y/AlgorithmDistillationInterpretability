@@ -97,9 +97,8 @@ def get_action_preds(dt):
 def respond_to_action(env, action):
     new_obs, reward, done, trunc, info = env.step(action)
     if done:
-        st.error(
-            "The agent has just made a game ending move. Please reset the environment."
-        )
+        reset_env(env)
+        
     # append to session state
     st.session_state.obs = t.cat(
         [
@@ -132,8 +131,20 @@ def respond_to_action(env, action):
         ],
         dim=1,
     )
+    if not done:
+        time = st.session_state.timesteps[-1][-1] + 1
+        st.session_state.timesteps = t.cat(
+            [
+                st.session_state.timesteps,
+                time.clone().detach().unsqueeze(0).unsqueeze(0),
+            ],
+            dim=1,
+        )
 
-    time = st.session_state.timesteps[-1][-1] + 1
+def reset_env(env):
+    env.reset()#TODO add some clearer way to indicate a episode ended
+    st.session_state.n_episode = st.session_state.n_episode +1
+    time = st.session_state.timesteps[-1][-1] *0 #TODO do this i n a less hacky way, -1 cause timesteps gets added +1
     st.session_state.timesteps = t.cat(
         [
             st.session_state.timesteps,
@@ -141,6 +152,8 @@ def respond_to_action(env, action):
         ],
         dim=1,
     )
+
+
 
 
 def get_action_from_user(env):

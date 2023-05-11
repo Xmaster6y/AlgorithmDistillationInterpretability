@@ -34,6 +34,7 @@ def initialize_playground(model_path):
         st.session_state.reward = reward
         st.session_state.a = actions
         st.session_state.timesteps = timesteps
+        st.session_state.n_episode=0
         st.session_state.dt = dt
 
     else:
