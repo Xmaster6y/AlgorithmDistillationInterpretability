@@ -14,6 +14,7 @@ from src.models.trajectory_transformer import (
 )
 
 from src.config import EnvironmentConfig
+from src.generation import value_iteration
 
 
 def get_max_len_from_model_type(model_type: str, n_ctx: int):
@@ -36,18 +37,37 @@ def get_max_len_from_model_type(model_type: str, n_ctx: int):
 
 def evaluate_random_agent(env, n_its=10_000):
     # Simulate random walks
-    total_reward = []
+    scores = []
     for i in range(n_its):
-        total_reward.append(0)
         obs, _ = env.reset()
         done = False
+        total_reward = 0
         while not done:
             action = env.action_space.sample()
             obs, reward, done, _, info = env.step(action)
-            total_reward[-1] += reward
+            total_reward += reward
+        scores.append(total_reward)
     # Average episodic rewards
-    avg_reward = sum(total_reward) / len(total_reward)
+    avg_reward = sum(scores) / len(scores)
     return avg_reward
+
+
+def evaluate_optimal_agent(env, n_rollouts=1_000):
+    values, policy = value_iteration(env, 0.99, 1e-5)
+    policy = policy.astype(np.int32)
+    # Do a bunch of rollouts
+    scores = []
+    for _ in range(n_rollouts):
+        obs, _  = env.reset()
+        done = False
+        total_reward = 0
+        while not done:
+            curr_state = np.argmax(obs)
+            action = policy[curr_state]
+            obs, rew, done, _, _ = env.step(action)
+            total_reward += rew
+        scores.append(total_reward)
+    return sum(scores) / len(scores)
 
 
 def evaluate_ad_agent(
@@ -111,8 +131,8 @@ def evaluate_ad_agent(
         )
         idx = min(max_len - 1, total_steps)
         act_probs = torch.softmax(action_preds[0, idx] / temp, dim=-1).detach().cpu().numpy()
-        # act = np.random.choice(np.arange(act_probs.shape[0]), p=act_probs)
-        act = act_probs.argmax(-1)  # Greedy sampling instead
+        act = np.random.choice(np.arange(act_probs.shape[0]), p=act_probs)
+        # act = act_probs.argmax(-1)  # Greedy sampling instead
          
         # Environment step
         obs, reward, done, _, info = env.step(act)
