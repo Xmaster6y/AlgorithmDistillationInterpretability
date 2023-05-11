@@ -22,6 +22,7 @@ from src.models.trajectory_transformer import (
 
 from .trainer import train
 from .utils import get_max_len_from_model_type, store_transformer_model
+from src.utils import create_environment_from_id
 
 
 
@@ -29,7 +30,9 @@ def run_decision_transformer(
     run_config: RunConfig,
     transformer_config: TransformerModelConfig,
     offline_config: OfflineTrainConfig,
-    history_dataset : HistoryDataset
+    history_dataset : HistoryDataset,
+    history_dataset_test:HistoryDataset,
+    env_id :str,
 ):
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     device=run_config.device
@@ -39,12 +42,13 @@ def run_decision_transformer(
 
     
     train_loader = create_history_dataloader(history_dataset, offline_config.batch_size, 256*128)
-
-    env = DarkKeyDoor(12, 2, 12, seed=500)
+    test_loader = create_history_dataloader(history_dataset, offline_config.batch_size, 256*128)
+    
+    env=create_environment_from_id(env_id,history_dataset.n_states,history_dataset.n_actions,history_dataset.episode_length,seed=500)#TODO maybe do something whith seed 
     environment_config = EnvironmentConfig(
-    env_id="Graph_DarkKeyDoor",
+    env_id=f'Graph_{env_id}',
     env=env,
-    device="cuda")
+    device=device)
 
   
     if run_config.track:
@@ -84,6 +88,7 @@ def run_decision_transformer(
     model =  train(#TODO look into batch size
     model,
     train_loader,
+    test_loader,
     environment_config,
     lr=3e-4,
     clip=1.,
@@ -91,7 +96,7 @@ def run_decision_transformer(
     track=offline_config.track,
     train_epochs=offline_config.train_epochs,
     eval_frequency=offline_config.eval_frequency,
-    eval_length=offline_config.eval_episodes,#TODO check its really this number and num episodes
+    eval_length=offline_config.eval_episodes
     )
         
     if run_config.track:
