@@ -29,6 +29,7 @@ if __name__ == "__main__":
     offline_config = OfflineTrainConfig(
         model_type=args.model_type,
         trajectory_path=args.trajectory_path,
+        test_trajectory_path=args.test_trajectory_path,
         n_episodes_per_seq=args.n_episodes_per_seq,
         train_epochs=args.train_epochs,
         test_epochs=args.test_epochs,
@@ -43,6 +44,7 @@ if __name__ == "__main__":
         device=run_config.device
     )
     history_dataset = HistoryDataset(offline_config.trajectory_path,n_episodes_per_seq=args.n_episodes_per_seq)
+    history_dataset_test = HistoryDataset(offline_config.test_trajectory_path,n_episodes_per_seq=args.n_episodes_per_seq)
     context_len = history_dataset.n_episodes_per_seq * history_dataset.episode_length * 3 - 2
 
     transformer_model_config = TransformerModelConfig(
@@ -69,4 +71,6 @@ if __name__ == "__main__":
         transformer_config=transformer_model_config,
         offline_config=offline_config,
         history_dataset=history_dataset,
+        history_dataset_test=history_dataset_test,
+        env_id=args.env_id
     )

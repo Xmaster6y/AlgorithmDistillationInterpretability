@@ -42,7 +42,7 @@ def run_decision_transformer(
 
     
     train_loader = create_history_dataloader(history_dataset, offline_config.batch_size, 256*128)
-    test_loader = create_history_dataloader(history_dataset, offline_config.batch_size, 256*128)
+    test_loader = create_history_dataloader(history_dataset_test, offline_config.batch_size, 256*128)
     
     env=create_environment_from_id(env_id,history_dataset.n_states,history_dataset.n_actions,history_dataset.episode_length,seed=500)#TODO maybe do something whith seed 
     environment_config = EnvironmentConfig(
@@ -90,7 +90,7 @@ def run_decision_transformer(
     train_loader,
     test_loader,
     environment_config,
-    lr=3e-4,
+    lr=offline_config.lr,
     clip=1.,
     device=offline_config.device,
     track=offline_config.track,
