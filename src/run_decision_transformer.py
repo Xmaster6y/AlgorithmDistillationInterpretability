@@ -39,7 +39,6 @@ if __name__ == "__main__":
     offline_config = OfflineTrainConfig(
         model_type=args.model_type,
         trajectory_path=args.trajectory_path,
-        pct_traj=args.pct_traj,
         train_epochs=args.train_epochs,
         test_epochs=args.test_epochs,
         lr=args.learning_rate,

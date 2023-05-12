@@ -42,11 +42,9 @@ def show_qk_circuit(dt):
         W_QK_full = W_E_state.T @ W_QK @ W_E_rtg
 
         n_heads = dt.transformer_config.n_heads
-        height, width, channels = dt.environment_config.observation_space[
-            "image"
-        ].shape
+        observations = dt.environment_config.observation_space.shape
         W_QK_full_reshaped = W_QK_full.reshape(
-            n_heads, 1, channels, height, width
+            n_heads, 1, 1, observations
         )
 
         selection_columns = st.columns(2)
@@ -58,18 +56,13 @@ def show_qk_circuit(dt):
                 key="head qk",
                 default=[0],
             )
-        if channels == 3:
 
-            def format_func(x):
-                return three_channel_schema[x]
+        format_func = twenty_idx_format_func
 
-        else:
-            format_func = twenty_idx_format_func
-
-        with selection_columns[1]:
+        with selection_columns[1]:#TODO change
             selected_channels = st.multiselect(
                 "Select Observation Channels",
-                options=list(range(channels)),
+                options=list(range(1)),
                 format_func=format_func,
                 key="channels qk",
                 default=[0, 1, 2],
@@ -78,9 +71,9 @@ def show_qk_circuit(dt):
         columns = st.columns(len(selected_channels))
         for i, channel in enumerate(selected_channels):
             with columns[i]:
-                if channels == 3:
+                if observations == 3:
                     st.write(three_channel_schema[channel])
-                elif channels == 20:
+                elif observations == 20:
                     st.write(twenty_idx_format_func(channel))
 
         for head in heads:
@@ -115,9 +108,7 @@ def show_ov_circuit(dt):
         # st.plotly_chart(px.imshow(W_OV.detach().numpy(), facet_col=0), use_container_width=True)
         OV_circuit_full = W_E.T @ W_OV @ W_U.T
 
-        height, width, channels = dt.environment_config.observation_space[
-            "image"
-        ].shape
+        height, width, channels = dt.environment_config.observation_space.shape
         n_actions = W_U.shape[0]
         n_heads = dt.transformer_config.n_heads
         OV_circuit_full_reshaped = OV_circuit_full.reshape(
@@ -237,7 +228,7 @@ def show_time_embeddings(dt, logit_dir):
             return t.matmul(normalized_matrix.t(), normalized_matrix)
 
         similarity_matrix = calc_cosine_similarity_matrix(time_embeddings.T)
-        st.plotly_chart(px.imshow(similarity_matrix.detach().numpy()))
+        st.plotly_chart(px.imshow(similarity_matrix.detach().cpu().numpy()))
 
 
 def show_rtg_embeddings(dt, logit_dir):

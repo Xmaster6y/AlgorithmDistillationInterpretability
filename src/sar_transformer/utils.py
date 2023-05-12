@@ -20,9 +20,16 @@ def parse_args():
         description="Train a algorithm distillation transformer on training histories",
         epilog="The last enemy that shall be defeated is death.",
     )
-    parser.add_argument("--exp_name", type=sWtr, default="Dev")
+    parser.add_argument("--exp_name", type=str, default="Dev")
+    parser.add_argument("--env_id", type=str, required=True, choices=[
+        "DarkRoom",
+        "DarkKeyDoor",
+        "ArmedBandit",
+        "SimpleDarkRoom",
+        "SimpleDarkKeyDoor"])
     parser.add_argument("--d_model", type=int, default=128)
     parser.add_argument("--trajectory_path", type=str)
+    parser.add_argument("--test_trajectory_path", type=str)
     parser.add_argument("--n_heads", type=int, default=4)
     parser.add_argument("--d_mlp", type=int, default=1024)
     parser.add_argument("--n_layers", type=int, default=4)

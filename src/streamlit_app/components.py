@@ -17,7 +17,8 @@ def render_game_screen(dt, env):
         current_time = (
             st.session_state.timesteps - st.session_state.timestep_adjustment
         )
-        st.write(f"Current Time: {int(current_time[0][-1].item())}")
+        
+        st.write(f"Current Time: {int(current_time[0][-1].item())} Current episode: {st.session_state.n_episode}" )
         fig = render_env(env)
         st.pyplot(fig)
 
