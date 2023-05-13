@@ -131,8 +131,8 @@ def evaluate_ad_agent(
         )
         idx = min(max_len - 1, total_steps)
         act_probs = torch.softmax(action_preds[0, idx] / temp, dim=-1).detach().cpu().numpy()
-        act = np.random.choice(np.arange(act_probs.shape[0]), p=act_probs)
-        # act = act_probs.argmax(-1)  # Greedy sampling instead
+        # act = np.random.choice(np.arange(act_probs.shape[0]), p=act_probs)
+        act = act_probs.argmax(-1)  # Greedy sampling instead
          
         # Environment step
         obs, reward, done, _, info = env.step(act)

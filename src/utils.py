@@ -345,6 +345,71 @@ def train_ucb(venv, file_name, n_steps):
     np.savez(file_name, **rollouts)
 
 
+def train_dynaq(venv, file_name, n_steps):
+    # Train model using upper confidence bound algorithm
+    env = venv.get_attr("env")[0]
+    assert env.action_space.n < n_steps, "Not enough steps to run algorithm"
+    # Algorithm hyperparameters
+    alpha = 1e-2
+    gamma = 0.99
+    epsilon = 0.1
+    epsilon_decay = 0.95
+    epsilon_min = 0.0
+    n_planning_steps = 200
+    # Create buffer for rollouts
+    rollouts = {
+        "observations": [],
+        "actions"     : [],
+        "rewards"     : [],
+        "dones"       : []
+    }
+    # Run Dyna-Q Algorithm
+    n_states = env.n_states
+    n_actions = env.n_actions
+    n_episodes = n_steps // env.max_steps
+    q_values = 12 * np.ones((n_states, n_actions))  # Optimisitic values to encourage exploration
+    model = {}
+    for episode in range(n_episodes):
+        obs, _ = env.reset(seed=episode)
+        state = np.argmax(obs)
+        done = False
+        total_reward = 0
+        while not done:
+            # Epsilon-Greedy algorithm
+            if np.random.random() < epsilon:
+                action = env.action_space.sample()
+            else:
+                action = np.argmax(q_values[state])
+            rollouts["observations"].append(obs)
+            rollouts["actions"].append(action)
+            obs, reward, done, _, _ = env.step(action)
+            # Add data to rollouts
+            rollouts["rewards"].append(reward)
+            rollouts["dones"].append(done)
+            # Perform updates on data
+            next_state = np.argmax(obs)
+            q_values[state, action] += alpha * (reward + gamma * np.max(q_values[next_state]) - q_values[state, action])
+            if state not in model:
+                model[state] = {}
+            model[state][action] = (reward, next_state)
+            for _ in range(n_planning_steps):
+                random_state = np.random.choice(list(model.keys()))
+                random_action = np.random.choice(list(model[random_state].keys()))
+                random_reward, random_next_state = model[random_state][random_action] 
+                q_values[random_state, random_action] += alpha * (random_reward + gamma * np.max(q_values[random_next_state]) - q_values[random_state, random_action])
+            state = next_state
+            total_reward += reward
+        epsilon = max(epsilon_min, epsilon * epsilon_decay)
+    # Concatenate data to make everything a np array
+    rollouts["observations"] = np.array(rollouts["observations"])
+    rollouts["actions"] = np.array(rollouts["actions"])[:, None]
+    rollouts["rewards"] = np.array(rollouts["rewards"])[:, None]
+    rollouts["dones"] = np.array(rollouts["dones"])[:, None]
+    rollouts["env"] = np.array(env)
+    # Write to a file
+    np.savez(file_name, **rollouts)
+
+
 def store_transformer_model(path, model, offline_config):
     torch.save(
         {
@@ -362,75 +427,3 @@ def store_transformer_model(path, model, offline_config):
         path,
     )
 
-
-def train_tabular_q(
-        env,
-        n_episodes=10,
-        alpha=1e-2, 
-        gamma=0.99, 
-        epsilon=0.0,
-        epsilon_decay=0.5,
-        epsilon_min=0.0,
-        theta=1e-4,
-        n_planning_steps=1_000
-    ):
-    # Model based q-learning with prioritized sweeping
-    n_states = env.n_states
-    n_actions = env.n_actions
-    q_values = np.ones((n_states, n_actions))  # Initializing to one encourages much faster exploration
-    model = {}
-    ep_rewards = []
-    priority_queue = []
-    seen_state_action_pairs = set()
-
-    for episode in range(n_episodes):
-
-        obs, _ = env.reset(seed=episode)
-        state = np.argmax(obs)
-        done = False
-        total_reward = 0
-
-        while not done:
-            # Compute next environment step
-            if np.random.random() < epsilon:
-                action = env.action_space.sample()
-            else:
-                action = np.argmax(q_values[state])
-            seen_state_action_pairs.add((state, action))
-            obs, reward, done, _, _ = env.step(action)
-            next_state = np.argmax(obs)
-
-            # Update the model
-            if state not in model:
-                model[state] = {}
-            model[state][action] = (reward, next_state)
-            
-            # Calculate priority and update queue
-            max_q_next = np.max(q_values[next_state]) if not done else 0
-            priority = np.abs(reward + gamma * max_q_next - q_values[state, action])
-            if priority > theta:
-                heapq.heappush(priority_queue, (-priority, state, action))
-                
-            # Planning loop
-            for i in range(n_planning_steps):
-                if len(priority_queue) == 0:
-                    break
-                _, s, a = heapq.heappop(priority_queue)
-                r, ns = model[s][a]
-                q_values[s, a] += alpha * (r + gamma * np.max(q_values[ns]) - q_values[s][a])
-                for s_prime, a_prime in seen_state_action_pairs:
-                    r_prime, ns_prime = model[s_prime][a_prime]
-                    if ns_prime != s:
-                        continue
-                    max_q_ns_prime = np.max(q_values[ns_prime])
-                    priority_prime = np.abs(r_prime + gamma * max_q_ns_prime - q_values[s_prime][a_prime])
-                    if priority_prime > theta:
-                        heapq.heappush(priority_queue, (-priority_prime, s_prime, a_prime))
-
-            state = next_state
-            total_reward += reward
-
-        ep_rewards.append(total_reward)
-        epsilon = max(epsilon_min, epsilon * epsilon_decay)
-
-    return ep_rewards
