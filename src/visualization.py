@@ -75,7 +75,7 @@ def render_video_from_policy(model, video_file_name):
     video.release()
 
 
-def visualize_learning_history(file_name, video_file_name, every_n_eps=40):
+def visualize_learning_history(file_name, video_file_name, every_n_eps=1):
     # Load in data
     data = np.load(file_name, allow_pickle=True)
     env = data['env'].item()

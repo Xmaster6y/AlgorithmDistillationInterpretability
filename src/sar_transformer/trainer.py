@@ -27,13 +27,13 @@ def train(
     test_frequency=1,
     eval_frequency=5,
     num_evals=8,
-    eval_length=100,
+    eval_length=1_000,
 ):
     # Create loss function and model optimizer
     loss_fn = nn.CrossEntropyLoss()
     model = model.to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, train_epochs, 1e-6)
+    optimizer = torch.optim.AdamW(model.parameters(), lr, betas=(0.9, 0.99))
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, train_epochs, 2e-6)
     train_batches_per_epoch = len(train_dataloader)
 
     # Start training

@@ -123,7 +123,7 @@ class GeneralTask(gym.Env):
                 if reward_next_state == -1 or reward_next_state == next_state:
                     if reward_action == -1 or reward_action == action:
                         if reward_flag == -1 or reward_flag == self.current_flag:
-                            if self.np_random.random() < reward_prob:
+                            if self.np_random.random() <= reward_prob:
                                 reward = reward_value
                             break
         # Calculate remaining timesteps and if done
@@ -226,11 +226,17 @@ class MultiArmedBandit(GeneralTask):
     def generate(self):
         super().generate()
         # We need to reinit probs for the rewards
+        '''
         for reward_rule in self.reward_rules:
             reward_rule[3] = self.rng.beta(1, 5)
         self.reward_rules[
             self.rng.integers(0, len(self.reward_rules))
             ][3] = 1.0  # Make one of the arms the best
+        '''
+        rew_probs = np.linspace(0, 1, self.n_actions)
+        rew_probs = self.rng.permutation(rew_probs)
+        for idx, reward_rule in enumerate(self.reward_rules):
+            reward_rule[3] = rew_probs[idx]
 
 @dataclass
 class NavigationBandit(GeneralTask):
