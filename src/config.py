@@ -15,7 +15,7 @@ from minigrid.wrappers import (
     OneHotPartialObsWrapper,
     RGBImgPartialObsWrapper,
 )
-from src.generation.environments import DarkKeyDoor
+from src.generation import DarkKeyDoor
 
 # from .environments.wrappers import ViewSizeWrapper
 
@@ -31,7 +31,9 @@ class EnvironmentConfig:
     one_hot_obs: bool = False
     img_obs: bool = False
     fully_observed: bool = False
-    max_steps: int = 1000
+    max_steps: int = 10
+    n_states: int=12
+    n_actions: int=2
     seed: int = 1
     view_size: int = 7
     capture_video: bool = False
@@ -45,8 +47,9 @@ class EnvironmentConfig:
     def __post_init__(self):
         if isinstance(self.env, dict):
             if self.env_id.startswith("Graph"):
-                #self.env = DarkKeyDoor(self.observation_space,self.action_space.n,)#TODO fix for all envs.
-                self.env = DarkKeyDoor(12,2,self.max_steps)
+                #self.env = DarkKeyDoor(self.observation_space,self.action_space.n,)#TODO fix for all envs. 
+                # create_environment_from_id(self.env_id,self.n_states,self.n_actions,self.max_steps)          
+                self.env = DarkKeyDoor(self.n_states,self.n_actions,self.max_steps)#Placeholder env maybe fix
             else:
                 self.env = gym.make(self.env_id)
 
@@ -58,6 +61,8 @@ class EnvironmentConfig:
             elif self.img_obs:
                 self.env = RGBImgPartialObsWrapper(self.env)
         elif self.env_id.startswith("Graph"):
+            self.n_states = self.env.n_states
+            self.n_actions = self.env.n_actions
             self.max_steps = self.env.max_steps
             self.observation_space = (
             self.observation_space or self.env.observation_space
@@ -151,6 +156,7 @@ class OfflineTrainConfig:
     """
 
     trajectory_path: str
+    test_trajectory_path: str
     batch_size: int = 128
     lr: float = 0.0001
     weight_decay: float = 0.0

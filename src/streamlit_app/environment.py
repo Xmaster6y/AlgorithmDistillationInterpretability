@@ -19,18 +19,24 @@ from src.sar_transformer.utils import (
 from src.environments.environments import make_env
 from src.utils import pad_tensor
 from src.generation import *
+from src.utils import create_environment_from_id
 
 
 @st.cache(allow_output_mutation=True)
 def get_env_and_dt(model_path):
     # we need to one if the env was one hot encoded. Some tech debt here.
     state_dict = t.load(model_path)
-    #env_config = state_dict["environment_config"]
+    env_config = state_dict["environment_config"]
     #env_config = EnvironmentConfig(**json.loads(env_config))
     #TODO make this work again based on env_config
     #env = make_env(env_config, seed=4200, idx=0, run_name="dev")
     #env = env()
-    env = DarkRoom(12, 2, 12, seed=500)
+    env_config = EnvironmentConfig(**json.loads(env_config))
+    env = create_environment_from_id(env_config.env_id[6:],env_config.n_states ,env_config.n_actions,env_config.max_steps,seed=500)#TODO maybe do something whith seed 
+    #env = DarkRoom(12, 2, 12, seed=500)
+    #env = MultiArmedBandit(8, seed=50_000)
+
+
 
     dt = load_algorithm_distillation_transformer(model_path, env)
     dt = dt.to(dt.transformer_config.device)#TODO make this unecesary by moving into the load 
