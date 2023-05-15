@@ -80,7 +80,7 @@ class TransformerModelConfig:
     d_mlp: int = 256
     n_layers: int = 2
     n_ctx: int = 2
-    layer_norm: bool = False
+    layer_norm: bool = True
     attn_only: bool = False
     state_embedding_type: str = "grid"
     time_embedding_type: str = "embedding"
@@ -168,7 +168,7 @@ class OfflineTrainConfig:
     model_type: str = "algorithm_distillation"
     convert_to_one_hot: bool = False
     initial_rtg = (0.0, 1.0)
-    eval_max_time_steps: int = 100
+    eval_max_time_steps: int = -1
     eval_num_envs: int = 8
 
     def __post_init__(self):

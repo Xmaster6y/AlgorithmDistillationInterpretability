@@ -42,10 +42,14 @@ def run_ad_transformer(
     )
 
     train_loader = create_history_dataloader(
-        history_dataset, offline_config.batch_size, 256 * 128
+        history_dataset,
+        offline_config.batch_size,
+        256 * offline_config.batch_size
     )
     test_loader = create_history_dataloader(
-        history_dataset, offline_config.batch_size, 256 * 64
+        history_dataset_test,
+        offline_config.batch_size,
+        64 * offline_config.batch_size
     )
 
     env = create_environment_from_id(
