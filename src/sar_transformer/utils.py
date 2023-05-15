@@ -73,7 +73,10 @@ def parse_args():
     parser.add_argument("--prob_go_from_end", type=float, default=0.1)
     parser.add_argument("--cuda", action="store_true")
     parser.add_argument(
-        "--model_type", type=str, default="algorithm_distillation"
+        "--model_type", type=str, default="algorithm_distillation", choices=[
+            "algorithm_distillation",
+            "concat_transformer"
+        ]
     )
     parser.add_argument(
         "--convert_to_one_hot",

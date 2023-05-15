@@ -151,10 +151,11 @@ class OfflineTrainConfig:
     """
 
     trajectory_path: str
+    test_trajectory_path: str
     batch_size: int = 128
     lr: float = 0.0001
     weight_decay: float = 0.0
-    n_episodes_per_seq: int =10
+    n_episodes_per_seq: int = 10
     prob_go_from_end: float = 0.0
     device: str = "cpu"
     track: bool = False
@@ -163,14 +164,20 @@ class OfflineTrainConfig:
     test_frequency: int = 10
     eval_frequency: int = 10
     eval_episodes: int = 10
-    model_type: str = "decision_transformer"
+    eval_temp: float = 1.0
+    model_type: str = "algorithm_distillation"
     convert_to_one_hot: bool = False
     initial_rtg = (0.0, 1.0)
     eval_max_time_steps: int = 100
     eval_num_envs: int = 8
 
     def __post_init__(self):
-        assert self.model_type in ["decision_transformer","algorithm_distillation","clone_transformer"]
+        assert self.model_type in [
+            "decision_transformer",
+            "algorithm_distillation",
+            "clone_transformer",
+            "concat_transformer"
+        ]
         if isinstance(self.device, str):
             self.device = torch.device(self.device)
 
