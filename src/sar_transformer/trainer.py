@@ -28,6 +28,7 @@ def train(
     eval_frequency=5,
     num_evals=8,
     eval_length=1_000,
+    eval_temp=1.,
 ):
     # Create loss function and model optimizer
     loss_fn = nn.CrossEntropyLoss()
@@ -111,7 +112,7 @@ def train(
                     model=model,
                     env_config=env_config,
                     n_episodes=eval_length,
-                    temp=1,
+                    temp=eval_temp,
                     device=device,
                     track=track,
                 )

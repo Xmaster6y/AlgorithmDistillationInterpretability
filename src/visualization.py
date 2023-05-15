@@ -87,7 +87,7 @@ def visualize_learning_history(file_name, video_file_name, every_n_eps=1):
     # Create video
     fourc = cv2.VideoWriter_fourcc(*'avc1')
     x, y, _ = env.render().shape
-    video = cv2.VideoWriter(f'{video_file_name}.mp4', fourc, 2.0, (x, y))
+    video = cv2.VideoWriter(f'{video_file_name}.mp4', fourc, 1.0, (x, y))
     # Iterate over episodes
     for ep in range(0, total_eps, every_n_eps):
         start_idx = ep * ep_len

@@ -927,6 +927,94 @@ class CriticTransfomer(CloneTransformer):
         return self.value_predictor(x)
 
 
+class ConcatTransformer(TrajectoryTransformer):
+    """
+    Similar to Algorithm Distillation but concatenates 
+    s_{t+1}, a_t, and r_t into one token position
+    """
+    
+    def __init__(self, environment_config, transformer_config, **kwargs):
+        super().__init__(
+            environment_config=environment_config,
+            transformer_config=transformer_config,
+            **kwargs,
+        )
+        self.model_type = "concat_transformer"
+        
+        self.input_fc = nn.Linear(
+            self.environment_config.env.n_states + self.environment_config.env.n_actions + 1,
+            self.transformer_config.d_model
+        ).to(self.transformer_config.device)
+
+        self.action_predictor = nn.Linear(
+            self.transformer_config.d_model,
+            self.environment_config.env.n_actions
+        ).to(self.transformer_config.device)
+        self.reward_predictor = nn.Linear(
+            self.transformer_config.d_model, 1).to(self.transformer_config.device)
+
+    def predict_rewards(self, x):
+        return self.reward_predictor(x)
+
+    def predict_actions(self, x):
+        return self.action_predictor(x)
+
+    def to_tokens(self, states, actions, rewards, timesteps):
+        assert states.shape[1] - 1 == actions.shape[1] == rewards.shape[1]
+        # Embed actions from discrete values to one hot vectors, shifted over one
+        actions = F.one_hot(
+            actions, num_classes=self.environment_config.env.n_actions)  # Converts to (batch, block_size, n_actions)
+        pad_actions = torch.zeros(actions.shape[0], 1, actions.shape[2]).to(states.device)
+        actions = torch.cat([pad_actions, actions], dim=1)
+        # Embed rewards shifted over one
+        rewards = rewards.unsqueeze(-1)
+        pad_rewards = torch.zeros(rewards.shape[0], 1, rewards.shape[2]).to(states.device)
+        rewards = torch.cat([pad_rewards, rewards], dim=1)
+        token_embeddings = torch.cat([states, actions, rewards], dim=-1)
+        return token_embeddings.to(torch.float32)
+
+    def get_logits(self, x, batch_size, seq_length, no_actions: bool):
+        action_preds = self.predict_actions(x)
+        return None, action_preds, None
+
+    def forward(
+        self,
+        states: TT[...],
+        actions: TT["batch", "position"],
+        rewards: TT["batch", "position"],
+        timesteps: TT["batch", "position"],
+        pad_action: bool = True,
+    ) -> Tuple[
+        TT[...], TT["batch", "position"], TT["batch", "position"]
+    ]:
+        
+        batch_size = states.shape[0]
+        seq_length = states.shape[1]
+        
+        if actions.ndim == 3:
+            actions = actions[:, :, 0]
+            
+        if rewards.ndim == 3:
+            rewards = rewards[:, :, 0]
+
+        token_embeddings = self.to_tokens(states, actions, rewards, timesteps)
+        
+        x = self.transformer(self.input_fc(token_embeddings))
+        state_preds, action_preds, reward_preds = self.get_logits(
+            x, batch_size, seq_length, no_actions=False
+        )
+
+        return state_preds, action_preds, reward_preds
+
+    def get_action(self, states, actions, rewards, timesteps):
+        state_preds, action_preds, reward_preds = self.forward(
+            states, actions, rewards, timesteps
+        )
+        action_preds = action_preds[:, -1, :]  # (batch, n_actions)
+        action = torch.argmax(action_preds, dim=-1)  # (batch)
+        return action
+
+
 class StateEncoder(nn.Module):
     def __init__(self, n_embed):
         super(StateEncoder, self).__init__()

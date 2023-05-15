@@ -352,7 +352,7 @@ def train_dynaq(venv, file_name, n_steps):
     # Algorithm hyperparameters
     alpha = 1e-2
     gamma = 0.99
-    epsilon = 0.1
+    epsilon = 0.0 # 0.1
     epsilon_decay = 0.95
     epsilon_min = 0.0
     n_planning_steps = 200
@@ -370,7 +370,7 @@ def train_dynaq(venv, file_name, n_steps):
     q_values = 12 * np.ones((n_states, n_actions))  # Optimisitic values to encourage exploration
     model = {}
     for episode in range(n_episodes):
-        obs, _ = env.reset(seed=episode)
+        obs, _ = env.reset()
         state = np.argmax(obs)
         done = False
         total_reward = 0
