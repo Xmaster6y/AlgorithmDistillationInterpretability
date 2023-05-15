@@ -111,19 +111,19 @@ def get_max_len_from_model_type(model_type: str, n_ctx: int):
     Ihe max len in timesteps is 3 for decision transformers
     and 2 for clone transformers since decision transformers
     have 3 tokens per timestep and clone transformers have 2.
+
     This is a map between timestep and tokens. We start with one
     for the most recent state/action and then add another
     timestep for every 3 tokens for decision transformers and
     every 2 tokens for clone transformers.
     """
-    assert model_type in ["algorithm_distillation", "clone_transformer"]
+    assert model_type in ["algorithm_distillation", "concat_transformer", "clone_transformer"]
     if model_type == "algorithm_distillation":
         return 1 + n_ctx // 3
-    
+    elif model_type == "concat_transformer":
+        return n_ctx
     else:
         return 1 + n_ctx // 2
-
-
 
     
 def store_transformer_model(path, model, offline_config):

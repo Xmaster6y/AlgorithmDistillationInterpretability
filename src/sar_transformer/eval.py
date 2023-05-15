@@ -12,27 +12,10 @@ from src.models.trajectory_transformer import (
     DecisionTransformer,
     AlgorithmDistillationTransformer
 )
+from src.sar_transformer.utils import get_max_len_from_model_type
 
 from src.config import EnvironmentConfig
 from src.generation import value_iteration
-
-
-def get_max_len_from_model_type(model_type: str, n_ctx: int):
-    """
-    Ihe max len in timesteps is 3 for decision transformers
-    and 2 for clone transformers since decision transformers
-    have 3 tokens per timestep and clone transformers have 2.
-
-    This is a map between timestep and tokens. We start with one
-    for the most recent state/action and then add another
-    timestep for every 3 tokens for decision transformers and
-    every 2 tokens for clone transformers.
-    """
-    assert model_type in ["algorithm_distillation", "clone_transformer"]
-    if model_type == "algorithm_distillation":
-        return 1 + n_ctx // 3
-    else:
-        return 1 + n_ctx // 2
 
 
 def evaluate_random_agent(env, n_its=10_000):
@@ -131,8 +114,10 @@ def evaluate_ad_agent(
         )
         idx = min(max_len - 1, total_steps)
         act_probs = torch.softmax(action_preds[0, idx] / temp, dim=-1).detach().cpu().numpy()
-        # act = np.random.choice(np.arange(act_probs.shape[0]), p=act_probs)
-        act = act_probs.argmax(-1)  # Greedy sampling instead
+        if temp == 0:
+            act = act_probs.argmax(-1)  # Greedy sampling
+        else:
+            act = np.random.choice(np.arange(act_probs.shape[0]), p=act_probs)
          
         # Environment step
         obs, reward, done, _, info = env.step(act)
