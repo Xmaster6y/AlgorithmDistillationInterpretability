@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument("--d_mlp", type=int, default=1024)
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--n_episodes_per_seq", type=int, default=10)
-    parser.add_argument("--layer_norm", type=bool, default=False)
+    parser.add_argument("--layer_norm", type=bool, default=True)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--train_epochs", type=int, default=10)
     parser.add_argument("--test_epochs", type=int, default=3)
@@ -73,7 +73,10 @@ def parse_args():
     parser.add_argument("--prob_go_from_end", type=float, default=0.1)
     parser.add_argument("--cuda", action="store_true")
     parser.add_argument(
-        "--model_type", type=str, default="algorithm_distillation"
+        "--model_type", type=str, default="algorithm_distillation", choices=[
+            "algorithm_distillation",
+            "concat_transformer"
+        ]
     )
     parser.add_argument(
         "--convert_to_one_hot",
