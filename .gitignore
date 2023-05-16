@@ -146,3 +146,4 @@ artifacts/
 *.npz
 src/streamlit_app/model_index.py
 download_wanbb_artifact.py
+
