@@ -183,7 +183,7 @@ class GeneralTask(gym.Env):
         node_edge_sizes[self.current_state] = 5
         # Draw image and return image array
         fig, ax = plt.subplots(figsize=(6, 6))
-        nx.draw_circular(
+        nx.draw_kamada_kawai(
             graph,
             ax=ax,
             connectionstyle='arc3, rad = 0.1',
