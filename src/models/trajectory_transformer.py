@@ -960,6 +960,11 @@ class ConcatTransformer(TrajectoryTransformer):
         return self.action_predictor(x)
 
     def to_tokens(self, states, actions, rewards, timesteps):
+        # Reshape tokens if wrong shape
+        if actions.ndim == 3:
+            actions = actions[:, :, 0]
+        if rewards.ndim == 3:
+            rewards = rewards[:, :, 0]
         assert states.shape[1] - 1 == actions.shape[1] == rewards.shape[1]
         # Embed actions from discrete values to one hot vectors, shifted over one
         actions = F.one_hot(
@@ -971,7 +976,7 @@ class ConcatTransformer(TrajectoryTransformer):
         pad_rewards = torch.zeros(rewards.shape[0], 1, rewards.shape[2]).to(states.device)
         rewards = torch.cat([pad_rewards, rewards], dim=1)
         token_embeddings = torch.cat([states, actions, rewards], dim=-1)
-        return token_embeddings.to(torch.float32)
+        return self.input_fc(token_embeddings.to(torch.float32))
 
     def get_logits(self, x, batch_size, seq_length, no_actions: bool):
         action_preds = self.predict_actions(x)
@@ -991,15 +996,9 @@ class ConcatTransformer(TrajectoryTransformer):
         batch_size = states.shape[0]
         seq_length = states.shape[1]
         
-        if actions.ndim == 3:
-            actions = actions[:, :, 0]
-            
-        if rewards.ndim == 3:
-            rewards = rewards[:, :, 0]
-
         token_embeddings = self.to_tokens(states, actions, rewards, timesteps)
+        x = self.transformer(token_embeddings)
         
-        x = self.transformer(self.input_fc(token_embeddings))
         state_preds, action_preds, reward_preds = self.get_logits(
             x, batch_size, seq_length, no_actions=False
         )

@@ -1,6 +1,6 @@
 from typing import List
 import streamlit.components.v1 as components
-import circuitsvis as cv
+# import circuitsvis as cv
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd

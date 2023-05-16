@@ -6,7 +6,7 @@ import minigrid
 import streamlit as st
 import torch as t
 
-from src.config import EnvironmentConfig
+from src.config import *
 from src.models.trajectory_transformer import (
     DecisionTransformer,
     CloneTransformer,
@@ -14,6 +14,7 @@ from src.models.trajectory_transformer import (
 
 from src.sar_transformer.utils import (
     load_algorithm_distillation_transformer,
+    load_concat_transformer,
     get_max_len_from_model_type,
 )
 from src.environments.environments import make_env
@@ -26,19 +27,20 @@ from src.utils import create_environment_from_id
 def get_env_and_dt(model_path):
     # we need to one if the env was one hot encoded. Some tech debt here.
     state_dict = t.load(model_path)
-    env_config = state_dict["environment_config"]
-    #env_config = EnvironmentConfig(**json.loads(env_config))
-    #TODO make this work again based on env_config
-    #env = make_env(env_config, seed=4200, idx=0, run_name="dev")
-    #env = env()
-    env_config = EnvironmentConfig(**json.loads(env_config))
-    env = create_environment_from_id(env_config.env_id[6:],env_config.n_states ,env_config.n_actions,env_config.max_steps,seed=500)#TODO maybe do something whith seed 
+    env_config = EnvironmentConfig(**json.loads(state_dict["environment_config"]))
+    offline_config = OfflineTrainConfig(**json.loads(state_dict["offline_config"]))
 
+    env = env_config.env
+    env.generate()
 
+    if offline_config.model_type == "algorithm_distillation":
+        dt = load_algorithm_distillation_transformer(model_path, env)
+    elif offline_config.model_type == "concat_transformer":
+        dt = load_concat_transformer(model_path, env)
 
-
-    dt = load_algorithm_distillation_transformer(model_path, env)
-    dt = dt.to(dt.transformer_config.device)#TODO make this unecesary by moving into the load 
+    dt = dt.to(
+        dt.transformer_config.device
+    )  # TODO make this unecesary by moving into the load
     if not hasattr(dt, "n_ctx"):
         dt.n_ctx = dt.transformer_config.n_ctx
     if not hasattr(dt, "time_embedding_type"):
@@ -73,18 +75,16 @@ def get_action_preds(dt):
             if (actions.shape[1] > 1 and max_len > 1)
             else None
         )
-    timesteps = (
-        timesteps[:, -max_len:] if timesteps.shape[1] > max_len else timesteps
-    )
+    timesteps = timesteps[:, -max_len:] if timesteps.shape[1] > max_len else timesteps
     reward = (
-            reward[:, -(obs.shape[1] - 1) :]
-            if (reward.shape[1] > 1 and max_len > 1)
-            else None
-        )
-    obs=obs.to(dt.transformer_config.device)
-    reward=reward.to(dt.transformer_config.device)
-    actions=actions.to(dt.transformer_config.device)
-    timesteps=timesteps.to(dt.transformer_config.device)
+        reward[:, -(obs.shape[1] - 1) :]
+        if (reward.shape[1] > 1 and max_len > 1)
+        else None
+    )
+    obs = obs.to(dt.transformer_config.device)
+    reward = reward.to(dt.transformer_config.device)
+    actions = actions.to(dt.transformer_config.device)
+    timesteps = timesteps.to(dt.transformer_config.device)
 
     if dt.time_embedding_type == "linear":
         timesteps = timesteps.to(dtype=t.float32)
@@ -92,7 +92,7 @@ def get_action_preds(dt):
         timesteps = timesteps.to(dtype=t.long)
     tokens = dt.to_tokens(obs, actions, reward, timesteps)
     x, cache = dt.transformer.run_with_cache(tokens, remove_batch_dim=False)
-    
+
     state_preds, action_preds, reward_preds = dt.get_logits(
         x, batch_size=1, seq_length=obs.shape[1], no_actions=actions is None
     )
@@ -103,7 +103,7 @@ def respond_to_action(env, action):
     new_obs, reward, done, trunc, info = env.step(action)
     if done:
         reset_env(env)
-        
+
     # append to session state
     st.session_state.obs = t.cat(
         [
@@ -146,10 +146,13 @@ def respond_to_action(env, action):
             dim=1,
         )
 
+
 def reset_env(env):
-    env.reset()#TODO add some clearer way to indicate a episode ended
-    st.session_state.n_episode = st.session_state.n_episode +1
-    time = st.session_state.timesteps[-1][-1] *0 #TODO do this i n a less hacky way, -1 cause timesteps gets added +1
+    env.reset()  # TODO add some clearer way to indicate a episode ended
+    st.session_state.n_episode = st.session_state.n_episode + 1
+    time = (
+        st.session_state.timesteps[-1][-1] * 0
+    )  # TODO do this i n a less hacky way, -1 cause timesteps gets added +1
     st.session_state.timesteps = t.cat(
         [
             st.session_state.timesteps,
@@ -159,11 +162,9 @@ def reset_env(env):
     )
 
 
-
-
 def get_action_from_user(env):
     # create a series of buttons for each action
-    num_actions=int(env.action_space.n)
+    num_actions = int(env.action_space.n)
     button_labels = [f"Action {i}" for i in range(num_actions)]
     # Create a list to store the button objects
     buttons = []

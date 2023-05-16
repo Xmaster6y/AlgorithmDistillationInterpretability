@@ -15,7 +15,7 @@ from minigrid.wrappers import (
     OneHotPartialObsWrapper,
     RGBImgPartialObsWrapper,
 )
-from src.generation import DarkKeyDoor
+from src.generation import *
 
 # from .environments.wrappers import ViewSizeWrapper
 
@@ -45,11 +45,12 @@ class EnvironmentConfig:
     device: str = "cpu"
 
     def __post_init__(self):
+        
         if isinstance(self.env, dict):
-            if self.env_id.startswith("Graph"):
-                #self.env = DarkKeyDoor(self.observation_space,self.action_space.n,)#TODO fix for all envs. 
-                # create_environment_from_id(self.env_id,self.n_states,self.n_actions,self.max_steps)          
-                self.env = DarkKeyDoor(self.n_states,self.n_actions,self.max_steps)#Placeholder env maybe fix
+            if self.env_id.startswith("Graph_DarkRoom"):
+                self.env = DarkRoom(self.n_states, self.n_actions, self.max_steps, self.seed)
+            elif self.env_id.startswith("Graph_DarkKeyDoor"):
+                self.env = DarkKeyDoor(self.n_states, self.n_actions, self.max_steps, self.seed)
             else:
                 self.env = gym.make(self.env_id)
 
@@ -65,7 +66,7 @@ class EnvironmentConfig:
             self.n_actions = self.env.n_actions
             self.max_steps = self.env.max_steps
             self.observation_space = (
-            self.observation_space or self.env.observation_space
+                self.observation_space or self.env.observation_space
             )
             self.action_space = self.action_space or self.env.action_space    
             
