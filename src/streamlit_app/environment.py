@@ -33,8 +33,7 @@ def get_env_and_dt(model_path):
     #env = env()
     env_config = EnvironmentConfig(**json.loads(env_config))
     env = create_environment_from_id(env_config.env_id[6:],env_config.n_states ,env_config.n_actions,env_config.max_steps,seed=500)#TODO maybe do something whith seed 
-    #env = DarkRoom(12, 2, 12, seed=500)
-    #env = MultiArmedBandit(8, seed=50_000)
+
 
 
 

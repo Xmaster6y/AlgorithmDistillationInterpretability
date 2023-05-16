@@ -60,6 +60,7 @@ def parse_args():
     )
     parser.add_argument("--wandb_entity", type=str, default=None)
     parser.add_argument("--test_frequency", type=int, default=100)
+    parser.add_argument("--eval_temp", type=int, default=1)
     parser.add_argument("--eval_frequency", type=int, default=10)
     parser.add_argument("--eval_episodes", type=int, default=1000)
     parser.add_argument("--eval_num_envs", type=int, default=8)

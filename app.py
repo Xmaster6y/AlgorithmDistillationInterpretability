@@ -33,9 +33,6 @@ from src.streamlit_app.visualizations import action_string_to_id
 
 from src.streamlit_app.model_index import model_index
 
-from src.environments.registration import register_envs
-
-register_envs()
 start = time.time()
 
 st.set_page_config(
