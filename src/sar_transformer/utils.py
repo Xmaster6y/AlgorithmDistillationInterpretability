@@ -10,7 +10,8 @@ from src.config import (
 )
 from src.models.trajectory_transformer import (
     AlgorithmDistillationTransformer,
-    CloneTransformer,
+    ConcatTransformer,
+    CloneTransformer
 )
 
 
@@ -88,6 +89,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 def load_algorithm_distillation_transformer(model_path, env=None) -> AlgorithmDistillationTransformer:
     """ """
 
@@ -102,6 +104,28 @@ def load_algorithm_distillation_transformer(model_path, env=None) -> AlgorithmDi
     )
 
     model = AlgorithmDistillationTransformer(
+        environment_config=environment_config,
+        transformer_config=transformer_config,
+    )
+
+    model.load_state_dict(state_dict)
+    return model
+
+
+def load_concat_transformer(model_path, env=None) -> AlgorithmDistillationTransformer:
+    """ """
+
+    model_info = t.load(model_path)
+    state_dict = model_info["model_state_dict"]
+    transformer_config = TransformerModelConfig(
+        **json.loads(model_info["model_config"])
+    )
+
+    environment_config = EnvironmentConfig(
+        **json.loads(model_info["environment_config"])
+    )
+
+    model = ConcatTransformer(
         environment_config=environment_config,
         transformer_config=transformer_config,
     )
