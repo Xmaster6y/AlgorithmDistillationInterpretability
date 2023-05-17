@@ -37,6 +37,7 @@ if __name__ == "__main__":
         weight_decay=args.weight_decay,
         batch_size=args.batch_size,
         test_frequency=args.test_frequency,
+        eval_temp=args.eval_temp,
         eval_episodes=args.eval_episodes,
         eval_num_envs=args.eval_num_envs,
         prob_go_from_end=args.prob_go_from_end,
