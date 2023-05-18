@@ -95,7 +95,7 @@ def train(
         scheduler.step()
         pbar.close()
         model.eval()
-                
+
         test(
             model=model,
             test_dataloader=test_dataloader,
@@ -103,6 +103,7 @@ def train(
             current_epoch=epoch+1,
             device=device,
             track=track,
+            logging_step=total_batches
         )
 
         if (epoch + 1) % eval_frequency == 0:
@@ -125,6 +126,7 @@ def test(
     test_dataloader,
     env_config,
     current_epoch,
+    logging_step,
     device="cuda",
     track=False,
 ):
@@ -141,8 +143,6 @@ def test(
         accs = []
 
         for batch, (s, a, r, ti) in enumerate(test_dataloader):
-            total_batches = current_epoch * test_batches_per_epoch + batch
-
             if model.transformer_config.time_embedding_type == "linear":
                 ti = ti.to(torch.float32)
 
@@ -171,13 +171,8 @@ def test(
             pbar.set_description(f"TEST  - Epoch: {current_epoch}, Loss: {sum(losses)/len(losses):.4f}, Acc: {sum(accs)/len(accs):.4f}%")
             pbar.update(1)
 
-            if track:
-                batch_size = s.shape[0]
-                wandb.log({"test/loss": loss.item()}, step=total_batches)
-                tokens_seen = (
-                    (total_batches + 1)
-                    * batch_size
-                    * (model.transformer_config.n_ctx // 3)
-                )
+        if track:
+            batch_size = s.shape[0]
+            wandb.log({"test/loss": sum(losses)/len(losses)}, step=logging_step)
 
         pbar.close()
