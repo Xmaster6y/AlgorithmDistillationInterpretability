@@ -351,11 +351,11 @@ def train_dynaq(venv, file_name, n_steps):
     assert env.action_space.n < n_steps, "Not enough steps to run algorithm"
     # Algorithm hyperparameters
     alpha = 1e-2
-    gamma = 0.99
-    epsilon = 0.0 # 0.1
+    gamma = 0.9
+    epsilon = 0.0
     epsilon_decay = 0.95
     epsilon_min = 0.0
-    n_planning_steps = 200
+    n_planning_steps = 1_000
     # Create buffer for rollouts
     rollouts = {
         "observations": [],
