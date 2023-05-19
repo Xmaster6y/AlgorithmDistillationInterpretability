@@ -24,21 +24,20 @@ class HistoryDataset(torch.utils.data.Dataset):
         self.actions = []
         self.rewards = []
         self.dones = []
+        
+        files = list(glob.glob(os.path.join(self.history_dir, "*.npz")))
+        data = np.load(files[0], allow_pickle=True)
+        env = data["env"].item()
+        self.n_states = env.n_states
+        self.n_actions = env.n_actions
+        self.episode_length = env.max_steps
 
-        for idx, file_path in enumerate(glob.glob(os.path.join(self.history_dir, "*.npz"))):
-            
-            data = dict(np.load(file_path, allow_pickle=True))
+        for idx, file_path in enumerate(files):
+            data = np.load(file_path)
             self.states.append(torch.from_numpy(data["observations"]))
             self.actions.append(torch.from_numpy(data["actions"]))
             self.rewards.append(torch.from_numpy(data["rewards"]))
             self.dones.append(torch.from_numpy(data["dones"]))
-            
-            if idx == 0:
-                # Only do this once since its very slow
-                env = data["env"].item()
-                self.n_states = env.n_states
-                self.n_actions = env.n_actions
-                self.episode_length = env.max_steps
 
         self.states = torch.stack(self.states, dim=0)
         self.actions = torch.stack(self.actions, dim=0)

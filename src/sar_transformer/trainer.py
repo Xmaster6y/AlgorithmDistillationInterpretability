@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from einops import rearrange
 from tqdm import tqdm
 
@@ -48,6 +49,12 @@ def train(
         for batch, (s, a, r, ti) in enumerate(train_dataloader):
             total_batches = epoch * train_batches_per_epoch + batch
 
+            # Random augmentations
+            state_perm = torch.randperm(s.shape[-1])
+            s = s.index_select(-1, state_perm)
+            if np.random.rand() < 0.5: # TODO - Make this compatible with variable number of actions
+                a = 1 - a
+            
             if model.transformer_config.time_embedding_type == "linear":
                 ti = ti.to(torch.float32)
 
