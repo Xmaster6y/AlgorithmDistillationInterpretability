@@ -96,11 +96,17 @@ def run_ad_transformer(
         )
     else:
         raise Exception(f"Unknown model_type: {offline_config.model_type}")
-
+    model_path=None
     if run_config.track:
         wandb.watch(model, log="parameters")
+        if not os.path.exists("models"):
+            os.mkdir("models")
+        model_path = f"models/{run_name}.pt"
+        if not os.path.exists(f"models/{run_name}_checkpoints"):
+            os.mkdir(f"models/{run_name}_checkpoints")
+        checkpoint_path=f"models/{run_name}_checkpoints"
 
-    model = train(  # TODO look into batch size
+    model = train( 
         model,
         train_loader,
         test_loader,
@@ -112,26 +118,23 @@ def run_ad_transformer(
         train_epochs=offline_config.train_epochs,
         eval_frequency=offline_config.eval_frequency,
         eval_length=offline_config.eval_episodes,
-        eval_temp=offline_config.eval_temp
+        eval_temp=offline_config.eval_temp,
+        run_name=run_name,
+        checkpoint_path=checkpoint_path,
+        offline_config=offline_config
     )
 
     if run_config.track:
         # save the model with pickle, then upload it
         # as an artifact, then delete it.
         # name it after the run name.
-        if not os.path.exists("models"):
-            os.mkdir("models")
-
-        model_path = f"models/{run_name}.pt"
-
         store_transformer_model(
             path=model_path,
             model=model,
             offline_config=offline_config,
         )
-
         artifact = wandb.Artifact(run_name, type="model")
         artifact.add_file(model_path)
         wandb.log_artifact(artifact)
-        os.remove(model_path)
+        #os.remove(model_path)
         wandb.finish()
