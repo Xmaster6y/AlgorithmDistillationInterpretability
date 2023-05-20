@@ -4,12 +4,7 @@ import torch as t
 from fancy_einsum import einsum
 from minigrid.core.constants import IDX_TO_COLOR, IDX_TO_OBJECT, STATE_TO_IDX
 
-from .constants import (
-    IDX_TO_ACTION,
-    IDX_TO_STATE,
-    three_channel_schema,
-    twenty_idx_format_func,
-)
+
 from .utils import fancy_histogram, fancy_imshow
 
 
@@ -42,9 +37,9 @@ def show_qk_circuit(dt):
         W_QK_full = W_E_state.T @ W_QK @ W_E_rtg
 
         n_heads = dt.transformer_config.n_heads
-        observations = dt.environment_config.observation_space.shape
+        n_observations = dt.environment_config.observation_space.shape[0]
         W_QK_full_reshaped = W_QK_full.reshape(
-            n_heads, 1, 1, observations
+            n_heads, 1, n_observations
         )
 
         selection_columns = st.columns(2)
@@ -57,37 +52,17 @@ def show_qk_circuit(dt):
                 default=[0],
             )
 
-        format_func = twenty_idx_format_func
-
-        with selection_columns[1]:#TODO change
-            selected_channels = st.multiselect(
-                "Select Observation Channels",
-                options=list(range(1)),
-                format_func=format_func,
-                key="channels qk",
-                default=[0, 1, 2],
-            )
-
-        columns = st.columns(len(selected_channels))
-        for i, channel in enumerate(selected_channels):
-            with columns[i]:
-                if observations == 3:
-                    st.write(three_channel_schema[channel])
-                elif observations == 20:
-                    st.write(twenty_idx_format_func(channel))
-
+        format_func = format_function
         for head in heads:
             st.write("Head", head)
-            columns = st.columns(len(selected_channels))
-            for i, channel in enumerate(selected_channels):
-                with columns[i]:
-                    fancy_imshow(
-                        W_QK_full_reshaped[head, 0, channel]
-                        .T.detach()
-                        .numpy(),
+            fancy_imshow(
+                        W_QK_full_reshaped[head].cpu().T.detach().numpy(),
                         color_continuous_midpoint=0,
                     )
 
+
+def format_function(idx):
+    return str(idx)
 
 def show_ov_circuit(dt):
     with st.expander("Show OV Circuit"):
@@ -108,20 +83,17 @@ def show_ov_circuit(dt):
         # st.plotly_chart(px.imshow(W_OV.detach().numpy(), facet_col=0), use_container_width=True)
         OV_circuit_full = W_E.T @ W_OV @ W_U.T
 
-        height, width, channels = dt.environment_config.observation_space.shape
+        obs_shape = dt.environment_config.observation_space.shape
         n_actions = W_U.shape[0]
         n_heads = dt.transformer_config.n_heads
         OV_circuit_full_reshaped = OV_circuit_full.reshape(
-            n_heads, channels, height, width, n_actions
+            n_heads, obs_shape[0], n_actions
         )
 
-        if channels == 3:
 
-            def format_func(x):
-                return three_channel_schema[x]
+        format_func = format_function
 
-        else:
-            format_func = twenty_idx_format_func
+
 
         selection_columns = st.columns(3)
         with selection_columns[0]:
@@ -133,43 +105,22 @@ def show_ov_circuit(dt):
             )
 
         with selection_columns[1]:
-            selected_channels = st.multiselect(
-                "Select Observation Channels",
-                options=list(range(channels)),
-                format_func=format_func,
-                key="channels ov",
-                default=[0, 1, 2],
-            )
-
-        with selection_columns[2]:
             selected_actions = st.multiselect(
                 "Select Actions",
                 options=list(range(n_actions)),
                 key="actions ov",
-                format_func=lambda x: IDX_TO_ACTION[x],
-                default=[0, 1, 2],
+                format_func=lambda x: format_function(x),#TODO change to action specific thing
+                default=[0],
             )
-
-        columns = st.columns(len(selected_channels))
-        for i, channel in enumerate(selected_channels):
-            with columns[i]:
-                if channels == 3:
-                    st.write(three_channel_schema[channel])
-                elif channels == 20:
-                    st.write(twenty_idx_format_func(channel))
 
         for head in heads:
             for action in selected_actions:
-                st.write(f"Head {head} - {IDX_TO_ACTION[action]}")
-                columns = st.columns(len(selected_channels))
-                for i, channel in enumerate(selected_channels):
-                    with columns[i]:
-                        fancy_imshow(
-                            OV_circuit_full_reshaped[
-                                head, channel, :, :, action
-                            ]
-                            .T.detach()
-                            .numpy(),
+                st.write(f"Head {head} - {format_function(action)}")#TODO change to action specific thing
+                
+
+                fancy_imshow(
+                            OV_circuit_full_reshaped[head,action]
+                            .cpu().T.detach().numpy(),
                             color_continuous_midpoint=0,
                         )
 
@@ -181,7 +132,7 @@ def show_time_embeddings(dt, logit_dir):
             time_embeddings = dt.get_time_embeddings(time_steps).squeeze(0)
         else:
             time_embeddings = dt.time_embedding.weight
-
+        
         max_timestep = st.slider(
             "Max timestep",
             min_value=1,
