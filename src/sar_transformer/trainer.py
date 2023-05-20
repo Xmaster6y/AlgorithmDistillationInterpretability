@@ -9,7 +9,7 @@ from src.models.trajectory_transformer import (
     AlgorithmDistillationTransformer,
     TrajectoryTransformer,
 )
-
+from .utils import store_transformer_model
 from .dataset import create_history_dataloader
 from .eval import evaluate_ad_agent
 
@@ -29,6 +29,9 @@ def train(
     num_evals=8,
     eval_length=1_000,
     eval_temp=1.,
+    run_name=None,
+    checkpoint_path=None,
+    offline_config=None
 ):
     # Create loss function and model optimizer
     loss_fn = nn.CrossEntropyLoss()
@@ -107,6 +110,14 @@ def train(
         )
 
         if (epoch + 1) % eval_frequency == 0:
+            if track:
+                    artifact = wandb.Artifact(run_name, type="model")
+                    current_checkpoint_path=f"{checkpoint_path}/checkpoint_epoch_{epoch + 1}.pt"
+                    store_transformer_model(path=current_checkpoint_path,model=model,offline_config=offline_config)
+                    artifact.add_file(current_checkpoint_path)
+                    wandb.log_artifact(artifact)
+                    
+                    
             for _ in range(num_evals):
                 # Evaluate the performance of the model on the new env
                 evaluate_ad_agent(
@@ -117,6 +128,7 @@ def train(
                     device=device,
                     track=track,
                 )
+            
 
     return model
 
