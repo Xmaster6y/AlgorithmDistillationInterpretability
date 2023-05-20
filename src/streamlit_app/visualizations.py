@@ -1,6 +1,6 @@
 from typing import List
 import streamlit.components.v1 as components
-# import circuitsvis as cv
+import circuitsvis as cv
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -64,9 +64,9 @@ def plot_attention_pattern_single(
     labels = []
 
     for i in range(1, n + 1):
-        labels.append("R" + str(i))
         labels.append("S" + str(i))
         labels.append("A" + str(i))
+        labels.append("R" + str(i))
 
     labels.pop()  # remove the last A
 
