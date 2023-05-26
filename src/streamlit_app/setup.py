@@ -10,8 +10,8 @@ from .environment import get_env_and_dt, get_action_from_user
 
 def initialize_playground(model_path):
     if "env" not in st.session_state or "dt" not in st.session_state:
-        env, dt = get_env_and_dt(model_path)
         
+        env, dt = get_env_and_dt(model_path,seed=st.session_state.seed)
         max_len = get_max_len_from_model_type(
             dt.model_type, dt.transformer_config.n_ctx
         )

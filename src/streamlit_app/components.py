@@ -14,9 +14,8 @@ def render_game_screen(dt, env):
         action_preds, x, cache, tokens = get_action_preds(dt)
         plot_action_preds(action_preds)
     with columns[1]:
-        current_time = (
-            st.session_state.timesteps - st.session_state.timestep_adjustment
-        )
+        current_time = st.session_state.timesteps 
+        
         
         st.write(f"Current Time: {int(current_time[0][-1].item())} Current episode: {st.session_state.n_episode}" )
         fig = render_env(env)
@@ -28,14 +27,13 @@ def render_game_screen(dt, env):
 def hyperpar_side_bar():
     with st.sidebar:
         st.subheader("Hyperparameters")
-        timestep_adjustment = st.slider(
-            "Timestep Adjustment",
-            min_value=-100.0,
-            max_value=100.0,
+        seed = st.number_input(
+            "Enviroment Seed",
+            min_value=0.0,
             value=0.0,
             step=1.0,
         )
-        st.session_state.timestep_adjustment = timestep_adjustment
+        st.session_state.seed = int(seed)
 
 def render_trajectory_details():
     with st.expander("Trajectory Details"):
@@ -51,7 +49,7 @@ def render_trajectory_details():
 
 
 def reset_button():
-    if st.button("reset", key=uuid.uuid4()):
+    if st.button("reset"):
         reset_env_dt()
         st.experimental_rerun()
 

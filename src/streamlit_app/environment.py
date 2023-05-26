@@ -24,13 +24,14 @@ from src.utils import create_environment_from_id
 
 
 @st.cache(allow_output_mutation=True)
-def get_env_and_dt(model_path):
+def get_env_and_dt(model_path,seed=None):
     # we need to one if the env was one hot encoded. Some tech debt here.
     state_dict = t.load(model_path)
     env_config = EnvironmentConfig(**json.loads(state_dict["environment_config"]))
     offline_config = OfflineTrainConfig(**json.loads(state_dict["offline_config"]))
-
     env = env_config.env
+
+    env.set_seed(selected_seed=seed)
     env.generate()
 
     if offline_config.model_type == "algorithm_distillation":
@@ -57,12 +58,6 @@ def get_action_preds(dt):
     )
 
     timesteps = st.session_state.timesteps[:, -max_len:]
-    timesteps = (
-        timesteps + st.session_state.timestep_adjustment
-        if "timestep_adjustment" in st.session_state
-        else timesteps
-    )
-
     obs = st.session_state.obs
     actions = st.session_state.a
     reward = st.session_state.reward

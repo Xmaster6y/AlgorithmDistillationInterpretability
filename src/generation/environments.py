@@ -80,8 +80,12 @@ class GeneralTask(gym.Env):
             if not repeat:
                 break
 
+    def set_seed(self,selected_seed=None):
+        self.rng = np.random.default_rng(seed=selected_seed)#if none its random
+
     def _get_obs(self):
         return self.observations[self.current_state]
+    
 
     @property
     def steps_remaining(self):

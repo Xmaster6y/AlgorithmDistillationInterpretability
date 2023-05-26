@@ -155,8 +155,7 @@ def show_time_embeddings(dt, logit_dir):
         fig.update_layout(showlegend=False)
         if show_initial:
             fig.add_vline(
-                x=st.session_state.timesteps[0][-1].item()
-                + st.session_state.timestep_adjustment,
+                x=st.session_state.timesteps[0][-1].item(),
                 line_dash="dash",
                 line_color="red",
                 annotation_text="Current timestep",
