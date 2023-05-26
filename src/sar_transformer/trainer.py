@@ -87,20 +87,20 @@ def train(
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
             optimizer.step()
-            
 
             pbar.set_description(f"TRAIN - Epoch: {epoch+1}, Loss: {sum(losses)/len(losses):.4f}, Acc: {sum(accs)/len(accs):.4f}%")
             pbar.update(1)
 
-            if track:
-                batch_size = s.shape[0]
-                wandb.log({"train/loss": loss.item()}, step=total_batches)
-                tokens_seen = (
-                    (total_batches + 1)
-                    * batch_size
-                    * (model.transformer_config.n_ctx // 3)
-                )
-                wandb.log({"metrics/tokens_seen": tokens_seen}, step=total_batches)
+        if track:
+            batch_size = s.shape[0]
+            wandb.log({"train/loss": sum(losses)/len(losses)}, step=total_batches)
+            wandb.log({"train/acc": sum(accs)/len(accs)}, step=total_batches)
+            tokens_seen = (
+                (total_batches + 1)
+                * batch_size
+                * (model.transformer_config.n_ctx // 3)
+            )
+            wandb.log({"metrics/tokens_seen": tokens_seen}, step=total_batches)
 
         scheduler.step()
         pbar.close()
@@ -193,5 +193,6 @@ def test(
         if track:
             batch_size = s.shape[0]
             wandb.log({"test/loss": sum(losses)/len(losses)}, step=logging_step)
+            wandb.log({"test/acc": sum(accs)/len(accs)}, step=logging_step)
 
         pbar.close()
