@@ -13,7 +13,7 @@ from src.config import (
 )
 
 from src.sar_transformer.runner import store_transformer_model
-from src.sar_transformer.utils import load_decision_transformer
+from src.sar_transformer.utils import load_algorithm_distillation_transformer, load_concat_transformer 
 from src.models.trajectory_transformer import DecisionTransformer
 
 
@@ -116,7 +116,7 @@ def offline_config() -> OfflineTrainConfig:
     return offline_config
 
 
-def test_load_decision_transformer(
+def test_load_algorithm_distillation_transformer(
     transformer_config,
     offline_config,
     environment_config,
@@ -134,7 +134,33 @@ def test_load_decision_transformer(
         offline_config=offline_config,
     )
 
-    new_model = load_decision_transformer(path)
+    new_model = load_algorithm_distillation_transformer(path)
+
+    assert_state_dicts_are_equal(new_model.state_dict(), model.state_dict())
+
+    assert new_model.transformer_config == transformer_config
+    assert new_model.environment_config == environment_config
+
+
+def test_load_concat_transformer(
+    transformer_config,
+    offline_config,
+    environment_config,
+    cleanup_test_results,
+):
+    model = DecisionTransformer(
+        environment_config=environment_config,
+        transformer_config=transformer_config,
+    )
+
+    path = "tmp/model_data.pt"
+    store_transformer_model(
+        path=path,
+        model=model,
+        offline_config=offline_config,
+    )
+
+    new_model = load_concat_transformer(path)
 
     assert_state_dicts_are_equal(new_model.state_dict(), model.state_dict())
 

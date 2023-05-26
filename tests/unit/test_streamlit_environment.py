@@ -10,14 +10,13 @@ from src.config import (
 )
 from src.models.trajectory_transformer import DecisionTransformer
 
-from src.decision_transformer.runner import store_transformer_model
+# from src.decision_transformer.runner import store_transformer_model
+from src.sar_transformer.utils import store_transformer_model
 from src.streamlit_app.environment import get_env_and_dt
-from src.environments.registration import register_envs
 
 
 @pytest.fixture()
 def decision_transformer_path():
-    register_envs()
 
     environment_config = EnvironmentConfig("MiniGrid-MemoryS7FixedStart-v0")
     offline_config = OfflineTrainConfig("test.pkl")
