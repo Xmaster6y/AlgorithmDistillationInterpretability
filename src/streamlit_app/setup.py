@@ -55,6 +55,8 @@ def initialize_playground(model_path):
         del action
         del st.session_state.action
     else:
-        get_action_from_user(env)
+        get_action_from_user(env,dt)
+
+
 
     return env, dt

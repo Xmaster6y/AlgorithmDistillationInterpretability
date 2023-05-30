@@ -7,15 +7,9 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-action_string_to_id = {
-    "left": 0,
-    "right": 1,
-    "forward": 2,
-    "pickup": 3,
-    "drop": 4,
-    "toggle": 5,
-    "done": 6,
-}
+action_options = [f"Action {i}" for i in range(0,10)]#TODO need to put the number of actions here somehow
+action_string_to_id = {element: index for index, element in enumerate(action_options)}
+
 action_id_to_string = {v: k for k, v in action_string_to_id.items()}
 
 

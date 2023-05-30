@@ -11,7 +11,7 @@ from src.models.trajectory_transformer import (
     DecisionTransformer,
     CloneTransformer,
 )
-
+import torch.nn.functional as F
 from src.sar_transformer.utils import (
     load_algorithm_distillation_transformer,
     load_concat_transformer,
@@ -157,7 +157,7 @@ def reset_env(env):
     )
 
 
-def get_action_from_user(env):
+def get_action_from_user(env,dt):
     # create a series of buttons for each action
     num_actions = int(env.action_space.n)
     button_labels = [f"Action {i}" for i in range(num_actions)]
@@ -175,3 +175,12 @@ def get_action_from_user(env):
             action = i
             respond_to_action(env, action)
             break
+    sample_button = st.button("Sample", key=f"sample_button")
+    if(sample_button):
+        action_preds, x, cache, tokens=get_action_preds(dt)
+        action_probabilities=F.softmax(action_preds.cpu().detach()[0][-1],dtype=t.double,dim=0)
+        action= np.random.choice(len(action_probabilities), p=action_probabilities)
+        respond_to_action(env,action)
+        
+
+    
