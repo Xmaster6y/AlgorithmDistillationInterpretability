@@ -15,12 +15,13 @@ def name_residual_components(dt, cache):
 
     # start with input
     for layer in range(n_layers):
-        # add the residual components from the attention layer
-        result.append(f"blocks.{layer}.attn.hook_z")
-        result.append(f"transformer.blocks.{layer}.attn.b_O")
-        # add the residual components from the mlp layer
-        result.append(f"blocks.{layer}.hook_mlp_out")
-
+        result.extend(
+            (
+                f"blocks.{layer}.attn.hook_z",
+                f"transformer.blocks.{layer}.attn.b_O",
+                f"blocks.{layer}.hook_mlp_out",
+            )
+        )
     return result
 
 
@@ -56,7 +57,7 @@ def get_residual_decomp(
                     cache[component][:, seq_pos, head, :]
                     @ dt.transformer.blocks[layer].attn.W_O[head]
                 )
-                decomp[component + f".{head}"] = output @ logit_dir
+                decomp[f"{component}.{head}"] = output @ logit_dir
 
         elif component.endswith(".hook_mlp_out"):
             decomp[component] = cache[component][:, seq_pos, :] @ logit_dir

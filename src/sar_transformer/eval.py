@@ -21,7 +21,7 @@ from src.generation import value_iteration
 def evaluate_random_agent(env, n_its=10_000):
     # Simulate random walks
     scores = []
-    for i in range(n_its):
+    for _ in range(n_its):
         obs, _ = env.reset()
         done = False
         total_reward = 0
@@ -30,9 +30,7 @@ def evaluate_random_agent(env, n_its=10_000):
             obs, reward, done, _, info = env.step(action)
             total_reward += reward
         scores.append(total_reward)
-    # Average episodic rewards
-    avg_reward = sum(scores) / len(scores)
-    return avg_reward
+    return sum(scores) / len(scores)
 
 
 def evaluate_optimal_agent(env, n_rollouts=1_000):
@@ -68,7 +66,7 @@ def evaluate_ad_agent(
         model.model_type,
         model.transformer_config.n_ctx,
     )
-    
+
     # Set up enivornment statistics
     ep_rewards = [0]
     episode_length = env_config.max_steps
@@ -77,34 +75,34 @@ def evaluate_ad_agent(
     env = env_config.env
     env.generate()
     n_obs = env.observation_space.shape[0]
-    
+
     # Measure baseline scores
     random_score = evaluate_random_agent(env)
     high_score = -1
-    
+
     # Set up buffers
     total_steps = 0
     state_buffer = np.zeros((1, max_len, n_obs))
     action_buffer = np.zeros((1, max_len, 1))
     reward_buffer = np.zeros((1, max_len, 1))
     time_buffer = np.zeros((1, max_len, 1))
-    
+
     # Progress bar
     pbar = tqdm(total=n_episodes)
     current_episode = 0
-    
+
     obs, _ = env.reset()
     current_timestep = 0
     state_buffer[0, 0] = obs
-        
-    while not (current_episode == n_episodes):
+
+    while current_episode != n_episodes:
                 
         # Convert buffers to torch tensors
         states = torch.as_tensor(state_buffer, dtype=torch.double, device=device)
         actions = torch.as_tensor(action_buffer, dtype=torch.long, device=device)[:, :-1]
         rewards = torch.as_tensor(reward_buffer, dtype=torch.double, device=device)[:, :-1]
         time = torch.as_tensor(time_buffer, dtype=torch.long, device=device)
-               
+
         # Get action prediction
         _, action_preds, _ = model.forward(
             states=states,
@@ -118,12 +116,12 @@ def evaluate_ad_agent(
             act = act_probs.argmax(-1)  # Greedy sampling
         else:
             act = np.random.choice(np.arange(act_probs.shape[0]), p=act_probs)
-         
+
         # Environment step
         obs, reward, done, _, info = env.step(act)
         total_steps += 1
         current_timestep += 1
-        
+
         # Check for done and reset appropriately
         if done:
             obs, _ = env.reset()
@@ -132,8 +130,7 @@ def evaluate_ad_agent(
             # Update pbar
             pbar.update(1)
             ad_score = sum(ep_rewards[-n_prev_episodes:]) / len(ep_rewards[-n_prev_episodes:])
-            if high_score < ad_score:
-                high_score = ad_score
+            high_score = max(high_score, ad_score)
             pbar.set_description(f"EVAL  - Random walk score: {random_score:.4f}, AD high score: {high_score:.4f}, AD final score: {ad_score:.4f}")
             ep_rewards.append(0)
 
@@ -145,7 +142,7 @@ def evaluate_ad_agent(
             action_buffer = np.roll(action_buffer, -1, axis=1)
             reward_buffer = np.roll(reward_buffer, -1, axis=1)
             time_buffer = np.roll(time_buffer, -1, axis=1)
-            
+
         idx = min(max_len - 1, total_steps)
         state_buffer[:, idx] = obs
         action_buffer[:, idx - 1, 0] = act
@@ -154,23 +151,10 @@ def evaluate_ad_agent(
 
     env.close()
     pbar.close()
-    
+
     if track:
         # log statistics at batch number but prefix with eval
-                wandb.log(
-                    {
-                        f"eval/ad_score": ad_score
-                        
-                    },
-                    #step=batch_number,
-                )
-                wandb.log(
-                    {
-                        f"eval/high_score":
-                            high_score
-                        
-                    },
-                    #step=batch_number,
-                )
+        wandb.log({"eval/ad_score": ad_score})
+        wandb.log({"eval/high_score": high_score})
 
     return ep_rewards

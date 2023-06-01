@@ -264,8 +264,6 @@ def evaluate_dt_agent(
                     },
                     step=batch_number,
                 )
-            wandb.log(
-                {f"eval/{str(initial_rtg)}/" + key: value}, step=batch_number
-            )
+            wandb.log({f"eval/{str(initial_rtg)}/{key}": value}, step=batch_number)
 
     return statistics

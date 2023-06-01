@@ -64,19 +64,17 @@ class RenderResizeWrapper(gym.Wrapper):
         self.render_height = render_height
 
     def render(self):
-        if self.env.render_mode == "rgb_array":
-            img = self.env.render()
-            img = np.array(img)
-
-            # Resize image
-            img = self._resize_image(
-                img, self.render_width, self.render_height
-            )
-
-            return img
-
-        else:
+        if self.env.render_mode != "rgb_array":
             return self.env.render()
+        img = self.env.render()
+        img = np.array(img)
+
+        # Resize image
+        img = self._resize_image(
+            img, self.render_width, self.render_height
+        )
+
+        return img
 
     def _resize_image(self, image, width, height):
         from PIL import Image

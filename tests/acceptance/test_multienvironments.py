@@ -10,7 +10,6 @@ from src.environments.multienvironments import MultiEnvSampler
 def test_multienv_sampler():
     max_steps = 1000
     render_mode = "rgb_array"
-    envs = []
     env = DynamicObstaclesEnv(
         size=6,
         n_obstacles=0,
@@ -18,7 +17,7 @@ def test_multienv_sampler():
         render_mode="rgb_array",
         max_steps=max_steps,
     )
-    envs.append(env)
+    envs = [env]
     for size in range(6, 10):
         for num_obstacles in range(5, 7):
             env = DynamicObstaclesEnv(

@@ -20,16 +20,13 @@ from src.models.trajectory_transformer import (
 def trajectory_data_set():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     trajectory_path = "tests/fixtures/test_trajectories.pkl"
-    trajectory_data_set = TrajectoryDataset(
-        trajectory_path, pct_traj=1, device=device
-    )
-    return trajectory_data_set
+    return TrajectoryDataset(trajectory_path, pct_traj=1, device=device)
 
 
 @pytest.fixture
 def environment_config(trajectory_data_set):
     env_id = trajectory_data_set.metadata["args"]["env_id"]
-    environment_config = EnvironmentConfig(
+    return EnvironmentConfig(
         env_id=env_id,
         one_hot_obs=trajectory_data_set.observation_type == "one_hot",
         view_size=7,
@@ -39,12 +36,10 @@ def environment_config(trajectory_data_set):
         max_steps=1000,
     )
 
-    return environment_config
-
 
 @pytest.fixture
 def transformer_model_config():
-    transformer_model_config = TransformerModelConfig(
+    return TransformerModelConfig(
         d_model=128,
         n_heads=4,
         d_mlp=256,
@@ -53,7 +48,6 @@ def transformer_model_config():
         n_ctx=2,  # one timestep of context
         device="cuda" if torch.cuda.is_available() else "cpu",
     )
-    return transformer_model_config
 
 
 @pytest.fixture
@@ -93,7 +87,7 @@ def models(environment_config, transformer_model_config):
         transformer_config=copy.deepcopy(transformer_model_config),
     )
 
-    models = {
+    return {
         "dt1 nctx = 2": dt1,
         "dt2 nctx = 5": dt2,
         "dt3 nctx = 8": dt3,
@@ -101,7 +95,6 @@ def models(environment_config, transformer_model_config):
         "bc2 nctx = 3": bc2,
         "bc3 nctx = 9": bc3,
     }
-    return models
 
 
 @pytest.fixture
@@ -111,9 +104,7 @@ def dt(request, models):
 
 @pytest.fixture
 def env(environment_config):
-    env = make_env(
-        environment_config, seed=0, idx=0, run_name=f"dt_train_videos_0"
-    )
+    env = make_env(environment_config, seed=0, idx=0, run_name="dt_train_videos_0")
     env = env()
     return env
 
@@ -132,11 +123,7 @@ def test_data_loader(trajectory_data_set):
         num_samples=len(test_dataset),
         replacement=True,
     )
-    test_dataloader = DataLoader(
-        test_dataset, batch_size=64, sampler=test_sampler
-    )
-
-    return test_dataloader
+    return DataLoader(test_dataset, batch_size=64, sampler=test_sampler)
 
 
 @pytest.mark.parametrize(

@@ -123,9 +123,9 @@ class GeneralTask(gym.Env):
             reward_value,
             reward_flag,
         ) in self.reward_rules[::-1]:
-            if reward_old_state == -1 or reward_old_state == self.current_state:
-                if reward_next_state == -1 or reward_next_state == next_state:
-                    if reward_action == -1 or reward_action == action:
+            if reward_next_state in [-1, next_state]:
+                if reward_action in [-1, action]:
+                    if reward_old_state == -1 or reward_old_state == self.current_state:
                         if reward_flag == -1 or reward_flag == self.current_flag:
                             if self.np_random.random() <= reward_prob:
                                 reward = reward_value
@@ -142,10 +142,9 @@ class GeneralTask(gym.Env):
     def update_flag(self):
         # Check to update flag
         for flag_old_state, flag_next_state, flag_action, flag_value in self.flag_rules[::-1]:
-            # Check if the rule meets the desired criteria
-            if flag_old_state == -1 or flag_old_state == self.prev_state:
-                if flag_next_state == -1 or flag_next_state == self.current_state:
-                    if flag_action == -1 or flag_action == self.prev_action:
+            if flag_old_state in [-1, self.prev_state]:
+                if flag_next_state in [-1, self.current_state]:
+                    if flag_action in [-1, self.prev_action]:
                         # Set the new flag value and break
                         # Newer rules override older ones so we break when we meet the first rule that applies
                         self.current_flag = flag_value
@@ -385,10 +384,7 @@ class MetaRLTask(GeneralTask):
             self.current_trial += 1
             obs, _ = super().reset()
             obs[-1] = 1.0  # Set done
-        if self.current_trial == self.n_trials:
-            terminated = True
-        else:
-            terminated = False
+        terminated = self.current_trial == self.n_trials
         # Observations includes previous reward and action
         obs[self.n_states + action] = 1.0
         obs[-2] = reward
