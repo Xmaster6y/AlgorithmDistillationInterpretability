@@ -121,7 +121,7 @@ class TrajectoryDataset(Dataset):
 
         self.state_dim = list(self.states[0][0].shape)
         self.act_dim = list(self.actions[0][0].shape)
-        self.max_ep_len = max([len(i) for i in self.states])
+        self.max_ep_len = max(len(i) for i in self.states)
         self.metadata = data["metadata"]
 
         # we want the trajectory indices to be in order of their generation -> indices = [0, 1, ..., num_trajectories]
@@ -139,10 +139,7 @@ class TrajectoryDataset(Dataset):
             self.observation_type = "one_hot"
 
     def get_sampling_probabilities(self):
-        p_sample = self.traj_lens[self.indices] / sum(
-            self.traj_lens[self.indices]
-        )
-        return p_sample
+        return self.traj_lens[self.indices] / sum(self.traj_lens[self.indices])
 
     def discount_cumsum(self, x, gamma):
         discount_cumsum = np.zeros_like(x)
@@ -334,7 +331,7 @@ class TrajectoryVisualizer:
 
         color_map = {-1: "Negative", 0: "Zero", 1: "Positive"}
 
-        fig = px.scatter(
+        return px.scatter(
             y=reward,
             x=timesteps,
             color=[color_map[i] for i in colors],
@@ -347,8 +344,6 @@ class TrajectoryVisualizer:
             marginal_x="histogram",
             marginal_y="histogram",
         )
-
-        return fig
 
     def plot_base_action_frequencies(self):
         fig = px.bar(

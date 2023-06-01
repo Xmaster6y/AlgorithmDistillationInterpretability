@@ -129,9 +129,7 @@ class LSTMModelConfig:
                 "res",
                 "simple",
             ]:
-                raise ValueError(
-                    "Incorrect architecture name: {}".format(self.arch)
-                )
+                raise ValueError(f"Incorrect architecture name: {self.arch}")
 
         self.endpool = "endpool" in self.arch
         self.bow = "bow" in self.arch
@@ -220,9 +218,7 @@ class OnlineTrainConfig:
         self.minibatch_size = self.batch_size // self.num_minibatches
 
         if self.trajectory_path is None:
-            self.trajectory_path = os.path.join(
-                "trajectories", str(uuid.uuid4()) + ".gz"
-            )
+            self.trajectory_path = os.path.join("trajectories", f"{str(uuid.uuid4())}.gz")
 
         if isinstance(self.device, str):
             self.device = torch.device(self.device)

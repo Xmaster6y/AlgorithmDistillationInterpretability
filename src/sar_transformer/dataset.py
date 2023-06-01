@@ -24,7 +24,7 @@ class HistoryDataset(torch.utils.data.Dataset):
         self.actions = []
         self.rewards = []
         self.dones = []
-        
+
         files = list(glob.glob(os.path.join(self.history_dir, "*.npz")))
         data = np.load(files[0], allow_pickle=True)
         env = data["env"].item()
@@ -32,7 +32,7 @@ class HistoryDataset(torch.utils.data.Dataset):
         self.n_actions = env.n_actions
         self.episode_length = env.max_steps
 
-        for idx, file_path in enumerate(files):
+        for file_path in files:
             data = np.load(file_path)
             self.states.append(torch.from_numpy(data["observations"]))
             self.actions.append(torch.from_numpy(data["actions"]))
@@ -43,10 +43,10 @@ class HistoryDataset(torch.utils.data.Dataset):
         self.actions = torch.stack(self.actions, dim=0)
         self.rewards = torch.stack(self.rewards, dim=0)
         self.dones = torch.stack(self.dones, dim=0)
-        
+
         self.n_histories = self.states.shape[0]
         self.n_episodes = self.states.shape[1] // self.episode_length
-        
+
         self.timesteps = torch.arange(self.episode_length)[None, :, None].repeat(
             self.n_histories, self.n_episodes, 1)
 

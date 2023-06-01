@@ -42,7 +42,7 @@ def parse_args():
     parser.add_argument("--learning_rate", type=float, default=0.0001)
     parser.add_argument(
         "--linear_time_embedding",
-        
+
         default=False,
         action="store_true",
     )
@@ -50,7 +50,7 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument(
         "--track",
-        
+
         default=False,
         action="store_true",
     )
@@ -82,12 +82,11 @@ def parse_args():
     )
     parser.add_argument(
         "--convert_to_one_hot",
-        
+
         default=False,
         action="store_true",
     )
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def load_algorithm_distillation_transformer(model_path, env=None) -> AlgorithmDistillationTransformer:
@@ -145,7 +144,11 @@ def get_max_len_from_model_type(model_type: str, n_ctx: int):
     timestep for every 3 tokens for decision transformers and
     every 2 tokens for clone transformers.
     """
-    assert model_type in ["algorithm_distillation", "concat_transformer", "clone_transformer"]
+    assert model_type in {
+        "algorithm_distillation",
+        "concat_transformer",
+        "clone_transformer",
+    }
     if model_type == "algorithm_distillation":
         return 1 + n_ctx // 3
     elif model_type == "concat_transformer":

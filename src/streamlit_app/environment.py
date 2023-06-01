@@ -175,8 +175,7 @@ def get_action_from_user(env,dt):
             action = i
             respond_to_action(env, action)
             break
-    sample_button = st.button("Sample", key=f"sample_button")
-    if(sample_button):
+    if sample_button := st.button("Sample", key="sample_button"):
         action_preds, x, cache, tokens=get_action_preds(dt)
         action_probabilities=F.softmax(action_preds.cpu().detach()[0][-1],dtype=t.double,dim=0)
         action= np.random.choice(len(action_probabilities), p=action_probabilities)

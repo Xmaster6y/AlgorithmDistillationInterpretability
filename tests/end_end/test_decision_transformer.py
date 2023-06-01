@@ -27,7 +27,7 @@ def download_training_data() -> None:
 @pytest.mark.parametrize("n_ctx", [2, 5, 8])
 def test_decision_transformer(download_training_data, n_ctx):
     run_config = RunConfig(
-        exp_name="Test-DT-n_ctx" + str(n_ctx),
+        exp_name=f"Test-DT-n_ctx{str(n_ctx)}",
         wandb_project_name="DecisionTransformerInterpretability",
         seed=1,
         track=True,
@@ -75,7 +75,7 @@ def test_decision_transformer(download_training_data, n_ctx):
 @pytest.mark.parametrize("n_ctx", [1, 3, 9])
 def test_clone_transformer(download_training_data, n_ctx):
     run_config = RunConfig(
-        exp_name="Test-BC-n_ctx" + str(n_ctx),
+        exp_name=f"Test-BC-n_ctx{str(n_ctx)}",
         wandb_project_name="DecisionTransformerInterpretability",
         seed=1,
         track=True,

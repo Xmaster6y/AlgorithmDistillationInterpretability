@@ -27,7 +27,7 @@ def cleanup_test_results() -> None:
 
 @pytest.fixture()
 def run_config() -> RunConfig:
-    run_config = RunConfig(
+    return RunConfig(
         exp_name="Test-PPO-Basic",
         seed=1,
         device="cuda" if torch.cuda.is_available() else "cpu",
@@ -36,12 +36,10 @@ def run_config() -> RunConfig:
         wandb_entity=None,
     )
 
-    return run_config
-
 
 @pytest.fixture()
 def environment_config() -> EnvironmentConfig:
-    environment_config = EnvironmentConfig(
+    return EnvironmentConfig(
         env_id="MiniGrid-Dynamic-Obstacles-8x8-v0",
         view_size=3,
         max_steps=300,
@@ -51,12 +49,11 @@ def environment_config() -> EnvironmentConfig:
         capture_video=True,
         video_dir="videos",
     )
-    return environment_config
 
 
 @pytest.fixture()
 def online_config() -> OnlineTrainConfig:
-    online_config = OnlineTrainConfig(
+    return OnlineTrainConfig(
         hidden_size=64,
         total_timesteps=2000,
         learning_rate=0.00025,
@@ -73,12 +70,11 @@ def online_config() -> OnlineTrainConfig:
         max_grad_norm=2,
         trajectory_path="trajectories/MiniGrid-DoorKey-8x8-trajectories.pkl",
     )
-    return online_config
 
 
 @pytest.fixture()
 def transformer_config() -> TransformerModelConfig:
-    transformer_config = TransformerModelConfig(
+    return TransformerModelConfig(
         d_model=128,
         n_heads=4,
         d_mlp=256,
@@ -91,12 +87,10 @@ def transformer_config() -> TransformerModelConfig:
         device="cpu",
     )
 
-    return transformer_config
-
 
 @pytest.fixture()
 def offline_config() -> OfflineTrainConfig:
-    offline_config = OfflineTrainConfig(
+    return OfflineTrainConfig(
         trajectory_path="trajectories/MiniGrid-DoorKey-8x8-trajectories.pkl",
         batch_size=128,
         lr=0.0001,
@@ -113,7 +107,6 @@ def offline_config() -> OfflineTrainConfig:
         initial_rtg=[0.0, 1.0],
         eval_num_envs=8,
     )
-    return offline_config
 
 
 def test_load_algorithm_distillation_transformer(

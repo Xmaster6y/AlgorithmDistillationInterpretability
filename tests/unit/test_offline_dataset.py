@@ -21,33 +21,25 @@ def get_len_i_for_i_in_list(l):
 @pytest.fixture
 def trajectory_reader_pkl():
     PATH = "tests/fixtures/test_trajectories.pkl"
-    trajectory_reader = TrajectoryReader(PATH)
-    return trajectory_reader
+    return TrajectoryReader(PATH)
 
 
 @pytest.fixture
 def trajectory_reader_xz():
     PATH = "tests/fixtures/test_trajectories.xz"
-    trajectory_reader = TrajectoryReader(PATH)
-    return trajectory_reader
+    return TrajectoryReader(PATH)
 
 
 @pytest.fixture
 def trajectory_dataset():
     PATH = "tests/fixtures/test_trajectories.pkl"
-    trajectory_dataset = TrajectoryDataset(
-        PATH, max_len=100, pct_traj=1.0, device="cpu"
-    )
-    return trajectory_dataset
+    return TrajectoryDataset(PATH, max_len=100, pct_traj=1.0, device="cpu")
 
 
 @pytest.fixture
 def trajectory_dataset_xz():
     PATH = "tests/fixtures/test_trajectories.xz"
-    trajectory_dataset = TrajectoryDataset(
-        PATH, max_len=100, pct_traj=1.0, device="cpu"
-    )
-    return trajectory_dataset
+    return TrajectoryDataset(PATH, max_len=100, pct_traj=1.0, device="cpu")
 
 
 def test_trajectory_reader_read(trajectory_reader_pkl):

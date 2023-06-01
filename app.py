@@ -57,8 +57,7 @@ with st.sidebar:
             format_func=lambda x: model_index[x],
             key="model_selector",
         )
-        submitted = st.form_submit_button("Load Model")
-        if submitted:
+        if submitted := st.form_submit_button("Load Model"):
             reset_env_dt()
 
 hyperpar_side_bar()
@@ -78,8 +77,7 @@ record_keypresses()
 
 with st.sidebar:
     st.subheader("Directional Analysis")
-    comparing = st.checkbox("comparing directions", value=True)
-    if comparing:
+    if comparing := st.checkbox("comparing directions", value=True):
         positive_action_direction = st.selectbox(
             "Positive Action Direction",
             action_options,

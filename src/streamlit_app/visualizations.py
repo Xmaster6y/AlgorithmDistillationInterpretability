@@ -58,14 +58,11 @@ def plot_attention_pattern_single(
     labels = []
 
     for i in range(1, n + 1):
-        labels.append("S" + str(i))
-        labels.append("A" + str(i))
-        labels.append("R" + str(i))
-
+        labels.extend((f"S{str(i)}", f"A{str(i)}", f"R{str(i)}"))
     labels.pop()  # remove the last A
 
-    if softmax:
-        if cache["pattern", layer, "attn"].shape[0] == 1:
+    if cache["pattern", layer, "attn"].shape[0] == 1:
+        if softmax:
             attention_pattern = cache["pattern", layer, "attn"][0]
             if specific_heads is not None:
                 attention_pattern = attention_pattern[specific_heads]
@@ -74,10 +71,6 @@ def plot_attention_pattern_single(
             )
             components.html(str(result), width=500, height=400)
         else:
-            st.write("Not implemented yet")
-
-    else:
-        if cache["pattern", layer, "attn"].shape[0] == 1:
             attention_pattern = cache["attn_scores", layer, "attn"][0]
 
             if specific_heads is not None:
@@ -87,8 +80,8 @@ def plot_attention_pattern_single(
                 attention=attention_pattern, tokens=labels
             )
             components.html(str(result), width=500, height=700)
-        else:
-            st.write("Not implemented yet")
+    else:
+        st.write("Not implemented yet")
 
 
 def render_env(env):

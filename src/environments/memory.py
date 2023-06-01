@@ -110,11 +110,7 @@ class MemoryEnv(MiniGridEnv):
         assert height % 2 == 1
         upper_room_wall = height // 2 - 2
         lower_room_wall = height // 2 + 2
-        if self.random_length:
-            hallway_end = self._rand_int(4, width - 2)
-        else:
-            hallway_end = width - 3
-
+        hallway_end = self._rand_int(4, width - 2) if self.random_length else width - 3
         # Start room
         for i in range(1, 5):
             self.grid.set(i, upper_room_wall, Wall())
@@ -141,11 +137,7 @@ class MemoryEnv(MiniGridEnv):
         start_pos_vert = height // 2
         self.agent_pos = np.array((start_pos_horiz, start_pos_vert))
 
-        if self.random_direction:
-            self.agent_dir = self._rand_int(0, 4)
-        else:
-            self.agent_dir = 0
-
+        self.agent_dir = self._rand_int(0, 4) if self.random_direction else 0
         # Place objects
         start_room_obj = self._rand_elem([Key, Ball])
         self.grid.set(1, height // 2 - 1, start_room_obj("green"))

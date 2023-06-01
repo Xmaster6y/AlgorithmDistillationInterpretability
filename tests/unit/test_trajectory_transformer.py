@@ -122,16 +122,12 @@ def test_predict_actions(transformer):
 
 def test_initialize_time_embedding(transformer):
     time_embedding = transformer.initialize_time_embedding()
-    assert isinstance(time_embedding, nn.Linear) or isinstance(
-        time_embedding, nn.Embedding
-    )
+    assert isinstance(time_embedding, (nn.Linear, nn.Embedding))
 
 
 def test_initialize_state_embedding(transformer):
     state_embedding = transformer.initialize_state_embedding()
-    assert isinstance(state_embedding, nn.Linear) or isinstance(
-        state_embedding, StateEncoder
-    )
+    assert isinstance(state_embedding, (nn.Linear, StateEncoder))
 
 
 def test_initialize_state_predictor(transformer):

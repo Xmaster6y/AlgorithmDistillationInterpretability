@@ -33,10 +33,9 @@ def is_strongly_connected(graph):
 def random_spanning_tree(n, rng):
     # Initialize spanning tree
     spanning_tree = np.zeros((n, n), dtype=int)
-    visited = set()
     # Start from a random node
     current = rng.choice(range(n))
-    visited.add(current)
+    visited = {current}
     # Aldous-Broder algorithm
     while len(visited) < n:
         next_node = rng.choice([i for i in range(n) if i != current])

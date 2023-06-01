@@ -162,9 +162,7 @@ class TrajectoryLSTM(nn.Module):
                 "res",
                 "simple",
             ]:
-                raise ValueError(
-                    "Incorrect architecture name: {}".format(self.arch)
-                )
+                raise ValueError(f"Incorrect architecture name: {self.arch}")
 
         # if not self.use_instr:
         #     raise ValueError("FiLM architecture can be used when instructions are enabled")
@@ -266,7 +264,7 @@ class TrajectoryLSTM(nn.Module):
                     imm_channels=128,
                 )
                 self.controllers.append(mod)
-                self.add_module("FiLM_" + str(ni), mod)
+                self.add_module(f"FiLM_{str(ni)}", mod)
 
         # Define memory and resize image embedding
         self.embedding_size = self.image_dim
@@ -338,7 +336,7 @@ class TrajectoryLSTM(nn.Module):
         it possible to finetune.
         """
         try:
-            if not hasattr(self, "aux_info") or not set(self.aux_info) == set(
+            if not hasattr(self, "aux_info") or set(self.aux_info) != set(
                 aux_info
             ):
                 self.aux_info = aux_info
@@ -414,7 +412,7 @@ class TrajectoryLSTM(nn.Module):
                 for info in self.extra_heads
             }
         else:
-            extra_predictions = dict()
+            extra_predictions = {}
 
         x = self.actor(embedding)
         # check if x is made of nans
@@ -436,9 +434,7 @@ class TrajectoryLSTM(nn.Module):
         lengths = (instr != 0).sum(1).long()
         if self.lang_model == "gru":
             out, _ = self.instr_rnn(self.word_embedding(instr))
-            hidden = out[range(len(lengths)), lengths - 1, :]
-            return hidden
-
+            return out[range(len(lengths)), lengths - 1, :]
         elif self.lang_model in ["bigru", "attgru"]:
             masks = (instr != 0).float()
 
@@ -474,6 +470,4 @@ class TrajectoryLSTM(nn.Module):
             return outputs if self.lang_model == "attgru" else final_states
 
         else:
-            ValueError(
-                "Undefined instruction architecture: {}".format(self.use_instr)
-            )
+            ValueError(f"Undefined instruction architecture: {self.use_instr}")

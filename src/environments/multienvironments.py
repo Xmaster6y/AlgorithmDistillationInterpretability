@@ -32,12 +32,12 @@ class MultiEnvSampler(gym.Env):
 
         self._homogenize_mission_spaces()
         for env in self.envs[1:]:
-            if not env.observation_space == obs_space:
+            if env.observation_space != obs_space:
                 raise ValueError(
                     f"All environments must have the same observation space\n{env.observation_space} != {obs_space}"
                 )
 
-            if not env.action_space == action_space:
+            if env.action_space != action_space:
                 raise ValueError(
                     f"All environments must have the same action space\n{env.action_space} != {action_space}"
                 )
@@ -70,8 +70,7 @@ class MultiEnvSampler(gym.Env):
         return self.env_names[self.env_id]
 
     def _sample_env_id(self):
-        env_id = np.random.choice(self.n_envs, p=self.p)
-        return env_id
+        return np.random.choice(self.n_envs, p=self.p)
 
     def _homogenize_mission_spaces(self):
         """resets all mission spaces to be equal to the first env"""
@@ -81,6 +80,4 @@ class MultiEnvSampler(gym.Env):
         else:
             mission_space = None
         for env in self.envs[1:]:
-            if env.observation_space["mission"] is not None:
-                pass
             env.observation_space["mission"] = mission_space

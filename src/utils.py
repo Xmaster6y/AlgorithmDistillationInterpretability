@@ -152,23 +152,21 @@ def pad_tensor(
             )
             pad = torch.ones(pad_shape) * pad_token
 
-            if pad_left:
-                tensor = torch.cat([pad, tensor], dim=1)
-            else:
-                tensor = torch.cat([tensor, pad], dim=1)
+            tensor = (
+                torch.cat([pad, tensor], dim=1)
+                if pad_left
+                else torch.cat([tensor, pad], dim=1)
+            )
+    elif tensor.shape[0] < length:
+        pad_shape = (length - tensor.shape[0], *tensor.shape[1:])
+        pad = torch.ones(pad_shape) * pad_token
 
-        return tensor
-    else:
-        if tensor.shape[0] < length:
-            pad_shape = (length - tensor.shape[0], *tensor.shape[1:])
-            pad = torch.ones(pad_shape) * pad_token
+        if pad_left:
+            tensor = torch.cat([pad, tensor], dim=0)
+        else:
+            tensor = torch.cat([tensor, pad], dim=0)
 
-            if pad_left:
-                tensor = torch.cat([pad, tensor], dim=0)
-            else:
-                tensor = torch.cat([tensor, pad], dim=0)
-
-        return tensor
+    return tensor
 
 
 class DictList(dict):
@@ -369,17 +367,18 @@ def train_dynaq(venv, file_name, n_steps):
     n_episodes = n_steps // env.max_steps
     q_values = 12 * np.ones((n_states, n_actions))  # Optimisitic values to encourage exploration
     model = {}
-    for episode in range(n_episodes):
+    for _ in range(n_episodes):
         obs, _ = env.reset()
         state = np.argmax(obs)
         done = False
         total_reward = 0
         while not done:
             # Epsilon-Greedy algorithm
-            if np.random.random() < epsilon:
-                action = env.action_space.sample()
-            else:
-                action = np.argmax(q_values[state])
+            action = (
+                env.action_space.sample()
+                if np.random.random() < epsilon
+                else np.argmax(q_values[state])
+            )
             rollouts["observations"].append(obs)
             rollouts["actions"].append(action)
             obs, reward, done, _, _ = env.step(action)

@@ -75,8 +75,7 @@ def parse_args():
         default=False,
         action=argparse.BooleanOptionalAction,
     )
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 # TODO Support loading Clone Transformers
@@ -113,7 +112,7 @@ def get_max_len_from_model_type(model_type: str, n_ctx: int):
     timestep for every 3 tokens for decision transformers and
     every 2 tokens for clone transformers.
     """
-    assert model_type in ["decision_transformer", "clone_transformer"]
+    assert model_type in {"decision_transformer", "clone_transformer"}
     if model_type == "decision_transformer":
         return 1 + n_ctx // 3
     else:
@@ -174,9 +173,7 @@ def initialize_padding_inputs(
         obs_image = t.tensor(initial_obs["image"])[:, None, :, :, :].to(device)
     else:
         raise ValueError(
-            "initial obs image has invalid shape: {}".format(
-                initial_obs["image"].shape
-            )
+            f'initial obs image has invalid shape: {initial_obs["image"].shape}'
         )
 
     obs = t.concat(

@@ -30,7 +30,7 @@ def fancy_histogram(vector):
 def list_models(path):
     model_list = []
     for root, dirs, files in os.walk(path):
-        for file in files:
-            if file.endswith(".pt"):
-                model_list.append(os.path.join(root, file))
+        model_list.extend(
+            os.path.join(root, file) for file in files if file.endswith(".pt")
+        )
     return model_list

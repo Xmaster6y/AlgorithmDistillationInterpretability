@@ -36,7 +36,7 @@ def sample_transition_rules(n_states, n_actions, rng, use_mcmc=True):
 def markov_chain_monte_carlo(T, rng, n_its=1_000):
     # Performs Markov Chain Monte Carlo to sample a random strongly-connected graph
     n_states, n_actions, _ = T.shape
-    for i in range(n_its):  # Not possible to calculate in general what the mixing time is here
+    for _ in range(n_its):
         rand_prev_state = rng.integers(0, n_states)
         rand_next_state = rng.integers(0, n_states)
         rand_act = rng.integers(0, n_actions)
@@ -56,10 +56,7 @@ def markov_chain_monte_carlo(T, rng, n_its=1_000):
 
 
 def sample_observation_rules(n_states):
-    # How should we sample observations
-    obs = np.eye(n_states)
-    # Optionally, we can rotate the observations using a random orthonormal matrix to make it harder for the policies
-    return obs
+    return np.eye(n_states)
 
 
 def sample_reward_rules(
@@ -82,7 +79,7 @@ def sample_reward_rules(
         for action in range(-1, n_actions)
     ]
     # Sample from the list of valid rules until we have enough
-    for nr in range(n_rewards):
+    for _ in range(n_rewards):
         rule = [-1, -1, -1, 0, 0, -1]
         # Repeat until the rule is conditional on either the old state, new_state, or action
         idx = None
@@ -93,23 +90,20 @@ def sample_reward_rules(
             if rng.random() < prob_use_old_state:
                 if prev_state == -1:
                     continue
-            else:
-                if prev_state != -1:
-                    continue
+            elif prev_state != -1:
+                continue
             # Accept-Reject sampling for new state
             if rng.random() < prob_use_new_state:
                 if new_state == -1:
                     continue
-            else:
-                if new_state != -1:
-                    continue
+            elif new_state != -1:
+                continue
             # Accept-Reject sampling for action
             if rng.random() < prob_use_action:
                 if action == -1:
                     continue
-            else:
-                if action != -1:
-                    continue
+            elif action != -1:
+                continue
             break
         rule[:3] = prev_state, new_state, action
         examples.pop(idx)
@@ -134,7 +128,7 @@ def sample_flag_rules(
 ):
     # Rules are of the form (old_state, new_state, action, new flag value)
     flagrules = []
-    for nr in range(n_flag_rules):
+    for _ in range(n_flag_rules):
         flagrule = [-1, -1, -1, 1.0]
         while flagrule[0] == -1 and flagrule[1] == -1 and flagrule[2] == -1:
             if rng.random() < prob_use_old_state:

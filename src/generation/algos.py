@@ -180,11 +180,11 @@ def prioritized_sweeping(env, n_episodes, alpha, gamma, epsilon, epsilon_decay, 
     ep_rewards = []
     priority_queue = []
     seen_state_action_pairs = set()
-    
+
     for episode in range(n_episodes):
         obs, _ = env.reset(seed=episode)
         state = np.argmax(obs)
-        done = False        
+        done = False
         total_reward = 0
 
         while not done:
@@ -206,8 +206,8 @@ def prioritized_sweeping(env, n_episodes, alpha, gamma, epsilon, epsilon_decay, 
             if priority > theta:
                 heapq.heappush(priority_queue, (-priority, state, action))
             # Planning loop
-            for i in range(n_planning_steps):
-                if len(priority_queue) == 0:
+            for _ in range(n_planning_steps):
+                if not priority_queue:
                     break
 
                 _, s, a = heapq.heappop(priority_queue)
@@ -219,7 +219,7 @@ def prioritized_sweeping(env, n_episodes, alpha, gamma, epsilon, epsilon_decay, 
                     r_prime, ns_prime = model[s_prime][a_prime]
                     if ns_prime != s:
                         continue
-                    
+
                     max_q_ns_prime = np.max(q_values[ns_prime])
                     priority_prime = np.abs(r_prime + gamma * max_q_ns_prime - q_values[s_prime][a_prime])
 
@@ -231,5 +231,5 @@ def prioritized_sweeping(env, n_episodes, alpha, gamma, epsilon, epsilon_decay, 
 
         ep_rewards.append(total_reward)
         epsilon = max(epsilon_min, epsilon * epsilon_decay)
-    
+
     return np.array(ep_rewards)
